@@ -1,0 +1,260 @@
+﻿@using BibliotecaPuntoVentas.ViewModels.Shared
+@model BibliotecaPuntoVentas.ViewModels.Inventario.InventarioIndexViewModel
+
+@{
+    ViewData["Title"] = "Inventario";
+    ViewData["Subtitle"] = "Control de existencias, entradas y ajustes";
+}
+
+<div class="row g-3 g-xl-4">
+    <div class="col-12 col-sm-6 col-xl-3">
+        <partial name="_ResumenTarjeta" model="@(new ResumenTarjetaViewModel
+        {
+            Titulo = "Valor del inventario",
+            Valor = Model.ValorTotalInventario.ToString("C2"),
+            Subtitulo = "Costo acumulado",
+            TipoIcono = "ventas",
+            TipoColor = "primary"
+        })" />
+    </div>
+
+    <div class="col-12 col-sm-6 col-xl-3">
+        <partial name="_ResumenTarjeta" model="@(new ResumenTarjetaViewModel
+        {
+            Titulo = "Unidades totales",
+            Valor = Model.TotalUnidades.ToString("N0"),
+            Subtitulo = $"En {Model.TotalProductos} productos",
+            TipoIcono = "inventario",
+            TipoColor = "green"
+        })" />
+    </div>
+
+    <div class="col-12 col-sm-6 col-xl-3">
+        <partial name="_ResumenTarjeta" model="@(new ResumenTarjetaViewModel
+        {
+            Titulo = "Stock bajo",
+            Valor = Model.ProductosStockBajo.ToString("N0"),
+            Subtitulo = "Requieren reposición",
+            TipoIcono = "alerta",
+            TipoColor = "orange"
+        })" />
+    </div>
+
+    <div class="col-12 col-sm-6 col-xl-3">
+        <partial name="_ResumenTarjeta" model="@(new ResumenTarjetaViewModel
+        {
+            Titulo = "Sin existencia",
+            Valor = Model.ProductosAgotados.ToString("N0"),
+            Subtitulo = "Atención inmediata",
+            TipoIcono = "alerta",
+            TipoColor = "red"
+        })" />
+    </div>
+</div>
+
+<div class="nova-toolbar mt-4">
+    <form asp-action="Index" method="get" class="nova-search-form">
+        <div class="nova-search-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.3-4.3"></path>
+            </svg>
+            <input type="search"
+                   name="busqueda"
+                   value="@Model.Busqueda"
+                   class="form-control nova-input"
+                   placeholder="Buscar por código o producto..." />
+        </div>
+        <button type="submit" class="btn nova-button-secondary">Buscar</button>
+        @if (!string.IsNullOrWhiteSpace(Model.Busqueda))
+        {
+            <a asp-action="Index" class="btn nova-button-ghost">Limpiar</a>
+        }
+    </form>
+
+    <button type="button"
+            class="btn nova-button-primary"
+            data-bs-toggle="modal"
+            data-bs-target="#movimientoInventarioModal">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 5v14M5 12h14"></path>
+        </svg>
+        Registrar movimiento
+    </button>
+</div>
+
+<article class="nova-card mt-3">
+    <header class="nova-card-header">
+        <div>
+            <h2>Existencias actuales</h2>
+            <p>Consulta el estado y valor de cada producto</p>
+        </div>
+        <span class="nova-pill info">@Model.Productos.Count productos</span>
+    </header>
+
+    <div class="table-responsive">
+        <table class="table nova-table align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Código</th>
+                    <th>Producto</th>
+                    <th>Categoría</th>
+                    <th class="text-end">Compra</th>
+                    <th class="text-end">Venta</th>
+                    <th class="text-center">Existencia</th>
+                    <th class="text-end">Valor</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Productos.Count == 0)
+                {
+                    <tr>
+                        <td colspan="8">
+                            <div class="nova-empty-state py-5">
+                                No se encontraron productos en el inventario.
+                            </div>
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var producto in Model.Productos)
+                    {
+                        var claseEstado = producto.EstaAgotado
+                            ? "danger"
+                            : producto.TieneStockBajo ? "warning" : "success";
+
+                        <tr>
+                            <td><span class="nova-code">@producto.Codigo</span></td>
+                            <td><strong>@producto.Nombre</strong></td>
+                            <td>@producto.Categoria</td>
+                            <td class="text-end">@producto.PrecioCompra.ToString("C2")</td>
+                            <td class="text-end fw-bold">@producto.PrecioVenta.ToString("C2")</td>
+                            <td class="text-center fw-bold">@producto.Existencia</td>
+                            <td class="text-end">@producto.ValorInventario.ToString("C2")</td>
+                            <td><span class="nova-status @claseEstado">@producto.EstadoInventario</span></td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</article>
+
+<article class="nova-card mt-4">
+    <header class="nova-card-header">
+        <div>
+            <h2>Movimientos recientes</h2>
+            <p>Últimas entradas, salidas y ajustes registrados</p>
+        </div>
+    </header>
+
+    <div class="table-responsive">
+        <table class="table nova-table align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Producto</th>
+                    <th>Movimiento</th>
+                    <th class="text-center">Cantidad</th>
+                    <th class="text-center">Anterior</th>
+                    <th class="text-center">Nuevo</th>
+                    <th>Referencia</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.UltimosMovimientos.Count == 0)
+                {
+                    <tr>
+                        <td colspan="7"><div class="nova-empty-state py-5">No hay movimientos registrados.</div></td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var movimiento in Model.UltimosMovimientos)
+                    {
+                        var esSalida = movimiento.TipoMovimiento.Contains("SALIDA");
+                        <tr>
+                            <td>@movimiento.FechaMovimiento.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                            <td>
+                                <strong>@movimiento.NombreProducto</strong>
+                                <small>@movimiento.CodigoProducto</small>
+                            </td>
+                            <td>
+                                <span class="nova-status @(esSalida ? "danger" : "success")">
+                                    @movimiento.TipoMovimiento.Replace("_", " ")
+                                </span>
+                            </td>
+                            <td class="text-center fw-bold">@(esSalida ? "-" : "+")@movimiento.Cantidad</td>
+                            <td class="text-center">@movimiento.ExistenciaAnterior</td>
+                            <td class="text-center fw-bold">@movimiento.ExistenciaNueva</td>
+                            <td>@(movimiento.Referencia ?? "Sin referencia")</td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</article>
+
+<div class="modal fade" id="movimientoInventarioModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content nova-modal">
+            <form asp-action="RegistrarMovimiento" method="post">
+                <div class="modal-header nova-modal-header">
+                    <div>
+                        <h5 class="modal-title">Registrar movimiento</h5>
+                        <p>Agrega una entrada o realiza un ajuste de existencias.</p>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label nova-label">Producto</label>
+                        <select name="ProductoId" class="form-select nova-input" required>
+                            <option value="">Selecciona un producto</option>
+                            @foreach (var producto in Model.Productos.OrderBy(p => p.Nombre))
+                            {
+                                <option value="@producto.ProductoId">
+                                    @producto.Codigo - @producto.Nombre (Stock: @producto.Existencia)
+                                </option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-12 col-md-7">
+                            <label class="form-label nova-label">Tipo de movimiento</label>
+                            <select name="TipoMovimiento" class="form-select nova-input" required>
+                                <option value="ENTRADA">Entrada de mercancía</option>
+                                <option value="AJUSTE_ENTRADA">Ajuste de entrada</option>
+                                <option value="AJUSTE_SALIDA">Ajuste de salida</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-5">
+                            <label class="form-label nova-label">Cantidad</label>
+                            <input type="number" name="Cantidad" min="1" class="form-control nova-input" required />
+                        </div>
+                    </div>
+
+                    <div class="mt-3">
+                        <label class="form-label nova-label">Referencia</label>
+                        <input type="text" name="Referencia" maxlength="100" class="form-control nova-input" placeholder="Factura, compra o motivo" />
+                    </div>
+
+                    <div class="mt-3">
+                        <label class="form-label nova-label">Observaciones</label>
+                        <textarea name="Observaciones" maxlength="500" rows="3" class="form-control nova-input" placeholder="Información adicional"></textarea>
+                    </div>
+                </div>
+
+                <div class="modal-footer nova-modal-footer">
+                    <button type="button" class="btn nova-button-ghost" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn nova-button-primary">Guardar movimiento</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

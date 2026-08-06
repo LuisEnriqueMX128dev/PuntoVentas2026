@@ -1,0 +1,22 @@
+﻿@model BibliotecaPuntoVentas.ViewModels.Productos.ProductoFormularioViewModel
+
+@{
+    ViewData["Title"] = "Editar producto";
+    ViewData["PageTitle"] = "Editar producto";
+    ViewData["PageSubtitle"] =
+        "Actualiza los datos del artículo";
+}
+
+<form asp-action="Editar"
+      method="post"
+      enctype="multipart/form-data">
+
+    @Html.AntiForgeryToken()
+
+    <partial name="_Formulario"
+             model="Model" />
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

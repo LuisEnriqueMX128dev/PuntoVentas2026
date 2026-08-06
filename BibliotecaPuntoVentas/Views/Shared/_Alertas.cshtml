@@ -1,0 +1,15 @@
+﻿@if (TempData["MensajeExito"] is string mensajeExito)
+{
+    <div class="alert nova-alert nova-alert-success alert-dismissible fade show" role="alert">
+        <strong>Correcto:</strong> @mensajeExito
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+}
+
+@if (TempData["MensajeError"] is string mensajeError)
+{
+    <div class="alert nova-alert nova-alert-danger alert-dismissible fade show" role="alert">
+        <strong>Atención:</strong> @mensajeError
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+    </div>
+}

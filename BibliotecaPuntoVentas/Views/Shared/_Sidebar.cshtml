@@ -1,0 +1,79 @@
+﻿@{
+    var controllerActual = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
+}
+
+<aside class="nova-sidebar" id="novaSidebar">
+    <a asp-controller="Ventas" asp-action="Index" class="nova-brand">
+        <span class="nova-brand-logo">T</span>
+        <span>
+            <strong>Tyliam Print</strong>
+            <small>Sistema de ventas</small>
+        </span>
+    </a>
+
+    <nav class="nova-nav">
+        <div class="nova-nav-label">Principal</div>
+
+        <a asp-controller="Home"
+           asp-action="Index"
+           class="nova-nav-item @(controllerActual == "Home" ? "active" : string.Empty)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="7" height="7"></rect>
+                <rect x="14" y="3" width="7" height="7"></rect>
+                <rect x="3" y="14" width="7" height="7"></rect>
+                <rect x="14" y="14" width="7" height="7"></rect>
+            </svg>
+            <span>Inicio</span>
+        </a>
+
+        <a asp-controller="Ventas"
+           asp-action="Index"
+           class="nova-nav-item @(controllerActual == "Ventas" ? "active" : string.Empty)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="9" cy="20" r="1"></circle>
+                <circle cx="18" cy="20" r="1"></circle>
+                <path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 2-1.6L21 8H7"></path>
+            </svg>
+            <span>Caja</span>
+            <span class="nova-nav-badge" id="sidebarCartBadge">0</span>
+        </a>
+
+        <a asp-controller="Productos"
+           asp-action="Index"
+           class="nova-nav-item @(controllerActual == "Productos" ? "active" : string.Empty)">
+
+            <svg viewBox="0 0 24 24"
+                 fill="none"
+                 stroke="currentColor"
+                 stroke-width="2">
+                <path d="m21 8-9-5-9 5 9 5 9-5Z"></path>
+                <path d="m3 8 9 5 9-5"></path>
+                <path d="M3 8v8l9 5 9-5V8"></path>
+            </svg>
+
+            <span>Productos</span>
+        </a>
+
+        <a asp-controller="Inventario"
+           asp-action="Index"
+           class="nova-nav-item @(controllerActual == "Inventario" ? "active" : string.Empty)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 9 12 4l9 5-9 5-9-5Z"></path>
+                <path d="m3 14 9 5 9-5"></path>
+            </svg>
+            <span>Inventario</span>
+        </a>
+
+
+    </nav>
+
+    <div class="nova-sidebar-footer">
+        <div class="nova-user-card">
+            <span class="nova-avatar">US</span>
+            <span>
+                <strong>Usuario sistema</strong>
+                <small>Acceso temporal</small>
+            </span>
+        </div>
+    </div>
+</aside>

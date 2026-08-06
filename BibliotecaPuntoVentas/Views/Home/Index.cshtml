@@ -1,0 +1,213 @@
+﻿@model BibliotecaPuntoVentas.ViewModels.Dashboard.DashboardViewModel
+@using System.Text.Json
+@using BibliotecaPuntoVentas.ViewModels.Shared
+
+@{
+    ViewData["Title"] = "Panel principal";
+    ViewData["Subtitle"] = "Resumen general del negocio";
+
+    var etiquetas = Model.VentasUltimosDias.Select(v => v.Dia).ToList();
+    var valores = Model.VentasUltimosDias.Select(v => v.Total).ToList();
+    var jsonOptions = new JsonSerializerOptions
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
+}
+
+<div class="row g-3 g-xl-4">
+    <div class="col-12 col-sm-6 col-xl-3">
+        <partial name="_ResumenTarjeta" model="@(new ResumenTarjetaViewModel
+                 {
+                     Titulo = "Ventas de hoy",
+                     Valor = Model.VentasHoy.ToString("C2"),
+                     Subtitulo = $"{Model.CantidadVentasHoy} ventas registradas",
+                     TipoIcono = "ventas",
+                     TipoColor = "primary"
+                 })" />
+    </div>
+
+    <div class="col-12 col-sm-6 col-xl-3">
+        <partial name="_ResumenTarjeta" model="@(new ResumenTarjetaViewModel
+                 {
+                     Titulo = "Productos disponibles",
+                     Valor = Model.TotalProductos.ToString("N0"),
+                     Subtitulo = "Productos activos",
+                     TipoIcono = "productos",
+                     TipoColor = "orange"
+                 })" />
+    </div>
+
+    <div class="col-12 col-sm-6 col-xl-3">
+        <partial name="_ResumenTarjeta" model="@(new ResumenTarjetaViewModel
+                 {
+                     Titulo = "Clientes registrados",
+                     Valor = Model.TotalClientes.ToString("N0"),
+                     Subtitulo = "Clientes activos",
+                     TipoIcono = "clientes",
+                     TipoColor = "green"
+                 })" />
+    </div>
+
+    <div class="col-12 col-sm-6 col-xl-3">
+        <partial name="_ResumenTarjeta" model="@(new ResumenTarjetaViewModel
+                 {
+                     Titulo = "Alertas de inventario",
+                     Valor = (Model.ProductosStockBajo + Model.ProductosAgotados).ToString("N0"),
+                     Subtitulo = $"{Model.ProductosAgotados} agotados",
+                     TipoIcono = "alerta",
+                     TipoColor = "red"
+                 })" />
+    </div>
+</div>
+
+<div class="row g-3 g-xl-4 mt-1">
+    <div class="col-12 col-xl-8">
+        <article class="nova-card h-100">
+            <header class="nova-card-header">
+                <div>
+                    <h2>Comportamiento de ventas</h2>
+                    <p>Ingresos registrados durante los últimos siete días</p>
+                </div>
+
+                <span class="nova-pill @(Model.PorcentajeCambioVentas >= 0 ? "success" : "danger")">
+                    @(Model.PorcentajeCambioVentas >= 0 ? "+" : string.Empty)@Model.PorcentajeCambioVentas.ToString("N1")%
+                </span>
+            </header>
+
+            <div class="nova-chart-container">
+                <canvas id="dashboardSalesChart"></canvas>
+            </div>
+        </article>
+    </div>
+
+    <div class="col-12 col-xl-4">
+        <article class="nova-card h-100">
+            <header class="nova-card-header">
+                <div>
+                    <h2>Accesos rápidos</h2>
+                    <p>Operaciones principales del sistema</p>
+                </div>
+            </header>
+
+            <div class="nova-quick-grid">
+                <a asp-controller="Ventas" asp-action="Index" class="nova-quick-action">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="9" cy="20" r="1"></circle>
+                        <circle cx="18" cy="20" r="1"></circle>
+                        <path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 2-1.6L21 8H7"></path>
+                    </svg>
+                    <span>
+                        <strong>Nueva venta</strong>
+                        <small>Abrir el punto de venta</small>
+                    </span>
+                </a>
+
+                <a asp-controller="Inventario" asp-action="Index" class="nova-quick-action">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 9 12 4l9 5-9 5-9-5Z"></path>
+                        <path d="m3 14 9 5 9-5"></path>
+                    </svg>
+                    <span>
+                        <strong>Inventario</strong>
+                        <small>Existencias y movimientos</small>
+                    </span>
+                </a>
+            </div>
+        </article>
+    </div>
+</div>
+
+<div class="row g-3 g-xl-4 mt-1">
+    <div class="col-12 col-xl-7">
+        <article class="nova-card">
+            <header class="nova-card-header">
+                <div>
+                    <h2>Productos más vendidos</h2>
+                    <p>Ranking correspondiente al mes actual</p>
+                </div>
+            </header>
+
+            <div class="table-responsive">
+                <table class="table nova-table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th>Categoría</th>
+                            <th class="text-center">Vendidos</th>
+                            <th class="text-end">Ingresos</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.ProductosMasVendidos.Count == 0)
+                        {
+                            <tr>
+                                <td colspan="4">
+                                    <div class="nova-empty-state py-5">
+                                        Todavía no hay ventas para mostrar.
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                        else
+                        {
+                            @foreach (var producto in Model.ProductosMasVendidos)
+                            {
+                                <tr>
+                                    <td>
+                                        <strong>@producto.Nombre</strong>
+                                        <small>@producto.Codigo</small>
+                                    </td>
+                                    <td>@producto.Categoria</td>
+                                    <td class="text-center">@producto.CantidadVendida</td>
+                                    <td class="text-end fw-bold">@producto.TotalVendido.ToString("C2")</td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </article>
+    </div>
+
+    <div class="col-12 col-xl-5">
+        <article class="nova-card h-100">
+            <header class="nova-card-header">
+                <div>
+                    <h2>Actividad reciente</h2>
+                    <p>Últimos movimientos del sistema</p>
+                </div>
+            </header>
+
+            <div class="nova-activity-list">
+                @if (Model.ActividadesRecientes.Count == 0)
+                {
+                    <div class="nova-empty-state py-5">No hay actividad registrada.</div>
+                }
+                else
+                {
+                    @foreach (var actividad in Model.ActividadesRecientes)
+                    {
+                        <div class="nova-activity-item">
+                            <span class="nova-activity-dot @(actividad.TipoActividad == "CANCELADA" ? "danger" : "success")"></span>
+                            <div>
+                                <strong>@actividad.Titulo</strong>
+                                <small>@actividad.Descripcion</small>
+                            </div>
+                            <time>@actividad.Fecha.ToString("HH:mm")</time>
+                        </div>
+                    }
+                }
+            </div>
+        </article>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        window.novaDashboardData = {
+            labels: @Html.Raw(JsonSerializer.Serialize(etiquetas, jsonOptions)),
+            values: @Html.Raw(JsonSerializer.Serialize(valores, jsonOptions))
+        };
+    </script>
+    <script src="~/js/novapos-dashboard.js" asp-append-version="true"></script>
+}

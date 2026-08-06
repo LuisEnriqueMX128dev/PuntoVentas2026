@@ -1,0 +1,296 @@
+﻿@model BibliotecaPuntoVentas.ViewModels.Ventas.PuntoVentaViewModel
+@using System.Text.Json
+
+@{
+    ViewData["Title"] = "Punto de venta";
+    ViewData["Subtitle"] = "Escanea, busca y cobra productos rápidamente";
+
+    var jsonOptions = new JsonSerializerOptions
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
+
+    var productosJson = JsonSerializer.Serialize(Model.Productos, jsonOptions);
+}
+
+<form id="antiForgeryForm" class="d-none">
+    @Html.AntiForgeryToken()
+</form>
+
+@if (!Model.TieneCajaAbierta)
+{
+    <div class="nova-cash-warning mb-4">
+        <div class="nova-cash-warning-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 2v20l3-2 3 2 3-2 3 2 3-2 1 1V2l-3 2-3-2-3 2-3-2-3 2-3-2Z"></path>
+            </svg>
+        </div>
+        <div class="flex-grow-1">
+            <strong>Debes abrir la caja para comenzar a vender</strong>
+            <p>Indica el fondo inicial. Después podrás escanear productos y registrar cobros.</p>
+        </div>
+        <button type="button"
+                class="btn nova-button-primary flex-shrink-0"
+                data-bs-toggle="modal"
+                data-bs-target="#abrirCajaModal">
+            Abrir caja
+        </button>
+    </div>
+}
+else
+{
+    <div class="nova-open-cash-bar mb-4">
+        <div>
+            <span class="nova-live-dot"></span>
+            <strong>Caja abierta</strong>
+            <small>@Model.CajaAbierta!.Folio · Apertura @Model.CajaAbierta.FechaApertura.ToLocalTime().ToString("HH:mm")</small>
+        </div>
+        <div class="text-md-end">
+            <small>Fondo inicial</small>
+            <strong>@Model.CajaAbierta.MontoInicial.ToString("C2")</strong>
+        </div>
+    </div>
+}
+
+<div class="nova-pos-layout">
+    <section class="nova-card nova-catalog-panel">
+        <header class="nova-card-header nova-pos-header">
+            <div>
+                <h2>Catálogo de productos</h2>
+                <p>Usa el lector de códigos o localiza el producto manualmente</p>
+            </div>
+            <span class="nova-pill info">@Model.Productos.Count productos</span>
+        </header>
+
+        <div class="nova-scanner-panel">
+            <div class="nova-scanner-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 5v4M3 15v4M21 5v4M21 15v4M7 7v10M10 7v10M14 7v10M17 7v10"></path>
+                </svg>
+            </div>
+
+            <div class="nova-scanner-copy">
+                <strong>Escáner o captura manual</strong>
+                <small>Escanea el código o escríbelo y presiona Enter. Atajo: F2.</small>
+            </div>
+
+            <div class="nova-scanner-input-group">
+                <input type="text"
+                       id="codigoEscaner"
+                       class="form-control nova-input"
+                       autocomplete="off"
+                       placeholder="Código de barras o código interno" />
+                <button type="button" id="buscarCodigoBtn" class="btn nova-button-primary">
+                    Agregar
+                </button>
+            </div>
+        </div>
+
+        <div class="nova-catalog-toolbar">
+            <div class="nova-search-box flex-grow-1">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.3-4.3"></path>
+                </svg>
+                <input type="search"
+                       id="buscarProductoManual"
+                       class="form-control nova-input"
+                       placeholder="Buscar por nombre o código..." />
+            </div>
+
+            <select id="filtroCategoria" class="form-select nova-input nova-category-select">
+                <option value="">Todas las categorías</option>
+                @foreach (var categoria in Model.Categorias)
+                {
+                    <option value="@categoria.Value">@categoria.Text</option>
+                }
+            </select>
+        </div>
+
+        <div class="nova-product-grid" id="productGrid">
+            @foreach (var producto in Model.Productos)
+            {
+                <partial name="_ProductoCard" model="producto" />
+            }
+
+            <div class="nova-empty-state d-none" id="productEmptyState">
+                No se encontraron productos con esos filtros.
+            </div>
+        </div>
+    </section>
+
+    <aside class="nova-card nova-cart-panel">
+        <header class="nova-card-header">
+            <div>
+                <h2>Venta actual</h2>
+                <p id="cartSummary">0 productos agregados</p>
+            </div>
+            <button type="button"
+                    class="nova-icon-button"
+                    id="clearCartBtn"
+                    title="Vaciar venta">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"></path>
+                </svg>
+            </button>
+        </header>
+
+        <div class="nova-customer-select">
+            <label for="clienteVenta">Cliente</label>
+            <select id="clienteVenta" class="form-select nova-input">
+                <option value="">Público general</option>
+                @foreach (var cliente in Model.Clientes)
+                {
+                    <option value="@cliente.Value">@cliente.Text</option>
+                }
+            </select>
+        </div>
+
+        <div class="nova-cart-list" id="cartList">
+            <div class="nova-cart-empty">
+                <span>🛒</span>
+                <strong>La venta está vacía</strong>
+                <p>Escanea un producto o agrégalo desde el catálogo.</p>
+            </div>
+        </div>
+
+        <div class="nova-cart-totals">
+            <div class="nova-total-row">
+                <span>Subtotal</span>
+                <strong id="subtotalValue">$0.00</strong>
+            </div>
+            <div class="nova-total-row">
+                <span>IVA incluido (@Model.PorcentajeImpuesto.ToString("N0")%)</span>
+                <strong id="taxValue">$0.00</strong>
+            </div>
+            <div class="nova-total-row grand">
+                <span>Total</span>
+                <strong id="totalValue">$0.00</strong>
+            </div>
+
+            <div class="nova-checkout-actions">
+                <button type="button" class="btn nova-button-ghost" id="cancelSaleBtn">
+                    Cancelar
+                </button>
+                <button type="button"
+                        class="btn nova-button-primary"
+                        id="checkoutBtn"
+                        disabled="@(!Model.TieneCajaAbierta)">
+                    Cobrar venta
+                </button>
+            </div>
+        </div>
+    </aside>
+</div>
+
+<div class="modal fade" id="abrirCajaModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content nova-modal">
+            <form asp-action="AbrirCaja" method="post">
+                <div class="modal-header nova-modal-header">
+                    <div>
+                        <h5 class="modal-title">Abrir caja</h5>
+                        <p>Registra el efectivo disponible al iniciar.</p>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body p-4">
+                    <label class="form-label nova-label">Monto inicial</label>
+                    <div class="input-group">
+                        <span class="input-group-text nova-input-prefix">$</span>
+                        <input type="number"
+                               name="MontoInicial"
+                               min="0"
+                               step="0.01"
+                               value="0.00"
+                               class="form-control nova-input"
+                               required />
+                    </div>
+                </div>
+
+                <div class="modal-footer nova-modal-footer">
+                    <button type="button" class="btn nova-button-ghost" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn nova-button-primary">Abrir caja</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="paymentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content nova-modal">
+            <div class="modal-header nova-modal-header">
+                <div>
+                    <h5 class="modal-title">Procesar cobro</h5>
+                    <p>Confirma el método de pago y el monto recibido.</p>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body p-4">
+                <div class="nova-payment-total">
+                    <small>Total a cobrar</small>
+                    <strong id="paymentTotalValue">$0.00</strong>
+                </div>
+
+                <div class="mt-4">
+                    <label class="form-label nova-label">Método de pago</label>
+                    <select id="paymentMethod" class="form-select nova-input">
+                        @foreach (var metodo in Model.MetodosPago)
+                        {
+                            <option value="@metodo.Value">@metodo.Text</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="mt-3">
+                    <label class="form-label nova-label">Monto recibido</label>
+                    <div class="input-group">
+                        <span class="input-group-text nova-input-prefix">$</span>
+                        <input type="number"
+                               id="receivedAmount"
+                               min="0"
+                               step="0.01"
+                               class="form-control nova-input" />
+                    </div>
+                </div>
+
+                <div class="mt-3">
+                    <label class="form-label nova-label">Referencia</label>
+                    <input type="text"
+                           id="paymentReference"
+                           class="form-control nova-input"
+                           placeholder="Opcional para tarjeta o transferencia" />
+                </div>
+
+                <div class="nova-change-box mt-3">
+                    <span>Cambio</span>
+                    <strong id="changeValue">$0.00</strong>
+                </div>
+            </div>
+
+            <div class="modal-footer nova-modal-footer">
+                <button type="button" class="btn nova-button-ghost" data-bs-dismiss="modal">Regresar</button>
+                <button type="button" class="btn nova-button-success" id="confirmPaymentBtn">
+                    Confirmar cobro
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        window.novaPosConfig = {
+            cajaId: '@Model.CajaId',
+            tieneCajaAbierta: @Model.TieneCajaAbierta.ToString().ToLowerInvariant(),
+            porcentajeImpuesto: @Model.PorcentajeImpuesto.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            buscarCodigoUrl: '@Url.Action("BuscarProductoPorCodigo", "Ventas")',
+            registrarVentaUrl: '@Url.Action("Registrar", "Ventas")',
+            productos: @Html.Raw(productosJson)
+        };
+    </script>
+    <script src="~/js/novapos-pos.js" asp-append-version="true"></script>
+}

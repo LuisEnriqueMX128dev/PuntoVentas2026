@@ -1,0 +1,308 @@
+﻿@model BibliotecaPuntoVentas.ViewModels.Productos.ProductoFormularioViewModel
+
+<input asp-for="Id" type="hidden" />
+<input asp-for="UrlImagenActual" type="hidden" />
+
+<div asp-validation-summary="ModelOnly"
+     class="alert alert-danger mb-4">
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="nova-card">
+            <div class="nova-card-header">
+                <div>
+                    <h3>Información del producto</h3>
+                    <p>
+                        Captura los datos generales, precios
+                        y configuración del inventario.
+                    </p>
+                </div>
+            </div>
+
+            <div class="nova-card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label asp-for="Codigo"
+                               class="form-label">
+                            Código
+                        </label>
+
+                        <input asp-for="Codigo"
+                               class="form-control nova-input"
+                               placeholder="PRD-001" />
+
+                        <span asp-validation-for="Codigo"
+                              class="text-danger small">
+                        </span>
+                    </div>
+
+                    <div class="col-md-8">
+                        <label asp-for="Nombre"
+                               class="form-label">
+                            Nombre del producto
+                        </label>
+
+                        <input asp-for="Nombre"
+                               class="form-control nova-input"
+                               placeholder="Nombre del producto" />
+
+                        <span asp-validation-for="Nombre"
+                              class="text-danger small">
+                        </span>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="CategoriaProductoId"
+                               class="form-label">
+                            Categoría
+                        </label>
+
+                        <select asp-for="CategoriaProductoId"
+                                asp-items="Model.Categorias"
+                                class="form-select nova-input">
+
+                            <option value="">
+                                Selecciona una categoría
+                            </option>
+                        </select>
+
+                        <span asp-validation-for="CategoriaProductoId"
+                              class="text-danger small">
+                        </span>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label asp-for="PrecioCompra"
+                               class="form-label">
+                            Precio de compra
+                        </label>
+
+                        <input asp-for="PrecioCompra"
+                               class="form-control nova-input"
+                               type="number"
+                               step="0.01"
+                               min="0" />
+
+                        <span asp-validation-for="PrecioCompra"
+                              class="text-danger small">
+                        </span>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label asp-for="PrecioVenta"
+                               class="form-label">
+                            Precio de venta
+                        </label>
+
+                        <input asp-for="PrecioVenta"
+                               class="form-control nova-input"
+                               type="number"
+                               step="0.01"
+                               min="0.01" />
+
+                        <span asp-validation-for="PrecioVenta"
+                              class="text-danger small">
+                        </span>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label asp-for="Existencia"
+                               class="form-label">
+                            Existencia
+                        </label>
+
+                        @if (Model.Id.HasValue)
+                        {
+                            <input asp-for="Existencia"
+                                   class="form-control nova-input"
+                                   readonly />
+
+                            <div class="form-text text-secondary">
+                                La existencia se modifica desde
+                                el módulo de inventario.
+                            </div>
+                        }
+                        else
+                        {
+                            <input asp-for="Existencia"
+                                   class="form-control nova-input"
+                                   type="number"
+                                   min="0" />
+                        }
+
+                        <span asp-validation-for="Existencia"
+                              class="text-danger small">
+                        </span>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label asp-for="StockMinimo"
+                               class="form-label">
+                            Stock mínimo
+                        </label>
+
+                        <input asp-for="StockMinimo"
+                               class="form-control nova-input"
+                               type="number"
+                               min="0" />
+
+                        <span asp-validation-for="StockMinimo"
+                              class="text-danger small">
+                        </span>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label asp-for="Estatus"
+                               class="form-label d-block">
+                            Estado
+                        </label>
+
+                        <div class="form-check form-switch mt-2">
+                            <input asp-for="Estatus"
+                                   class="form-check-input" />
+
+                            <label asp-for="Estatus"
+                                   class="form-check-label">
+                                Producto activo
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="col-12">
+                        <label asp-for="Descripcion"
+                               class="form-label">
+                            Descripción
+                        </label>
+
+                        <textarea asp-for="Descripcion"
+                                  class="form-control nova-input"
+                                  rows="4"
+                                  placeholder="Descripción opcional">
+                        </textarea>
+
+                        <span asp-validation-for="Descripcion"
+                              class="text-danger small">
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="nova-card h-100">
+            <div class="nova-card-header">
+                <div>
+                    <h3>Fotografía</h3>
+                    <p>
+                        JPG, PNG o WEBP de máximo 5 MB.
+                    </p>
+                </div>
+            </div>
+
+            <div class="nova-card-body">
+                <div class="product-image-preview"
+                     id="contenedorVistaPrevia">
+
+                    @if (!string.IsNullOrWhiteSpace(
+                            Model.UrlImagenActual))
+                    {
+                        <img src="@Model.UrlImagenActual"
+                             id="vistaPrevia"
+                             alt="Fotografía del producto" />
+                    }
+                    else
+                    {
+                        <div class="product-image-placeholder"
+                             id="imagenPlaceholder">
+                            <span>📦</span>
+                            <small>Sin fotografía</small>
+                        </div>
+
+                        <img src=""
+                             id="vistaPrevia"
+                             alt="Vista previa"
+                             class="d-none" />
+                    }
+                </div>
+
+                <div class="mt-3">
+                    <input asp-for="Foto"
+                           type="file"
+                           class="form-control nova-input"
+                           accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" />
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(
+                        Model.UrlImagenActual))
+                {
+                    <div class="form-check mt-3">
+                        <input asp-for="EliminarImagen"
+                               class="form-check-input" />
+
+                        <label asp-for="EliminarImagen"
+                               class="form-check-label text-secondary">
+                            Eliminar fotografía actual
+                        </label>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="d-flex justify-content-end gap-2 mt-4">
+    <a asp-action="Index"
+       class="btn btn-nova-secondary">
+        Cancelar
+    </a>
+
+    <button type="submit"
+            class="btn btn-nova-primary">
+        Guardar producto
+    </button>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const inputFoto =
+            document.getElementById("Foto");
+
+        const vistaPrevia =
+            document.getElementById("vistaPrevia");
+
+        const placeholder =
+            document.getElementById(
+                "imagenPlaceholder");
+
+        if (!inputFoto || !vistaPrevia) {
+            return;
+        }
+
+        inputFoto.addEventListener(
+            "change",
+            function () {
+                const archivo =
+                    this.files?.[0];
+
+                if (!archivo) {
+                    return;
+                }
+
+                const urlTemporal =
+                    URL.createObjectURL(archivo);
+
+                vistaPrevia.src =
+                    urlTemporal;
+
+                vistaPrevia.classList
+                    .remove("d-none");
+
+                if (placeholder) {
+                    placeholder.classList
+                        .add("d-none");
+                }
+            });
+    });
+</script>

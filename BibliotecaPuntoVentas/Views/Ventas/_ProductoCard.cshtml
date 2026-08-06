@@ -1,0 +1,36 @@
+﻿@model BibliotecaPuntoVentas.ViewModels.Ventas.ProductoPuntoVentaViewModel
+
+<article class="nova-product-card"
+         data-product-card
+         data-product-id="@Model.Id"
+         data-product-code="@Model.Codigo.ToLowerInvariant()"
+         data-product-name="@Model.Nombre.ToLowerInvariant()"
+         data-product-category="@Model.CategoriaProductoId">
+    <div class="nova-product-image">
+        @if (!string.IsNullOrWhiteSpace(Model.UrlImagen))
+        {
+            <img src="@Model.UrlImagen" alt="@Model.Nombre" />
+        }
+        else
+        {
+            <span>📦</span>
+        }
+    </div>
+
+    <div class="nova-product-info">
+        <span class="nova-product-category">@Model.Categoria</span>
+        <h3>@Model.Nombre</h3>
+        <small>@Model.Codigo · Stock @Model.Existencia</small>
+
+        <div class="nova-product-footer">
+            <strong>@Model.PrecioVenta.ToString("C2")</strong>
+            <button type="button"
+                    class="nova-add-product"
+                    data-add-product="@Model.Id"
+                    disabled="@(Model.Existencia <= 0)"
+                    aria-label="Agregar @Model.Nombre">
+                +
+            </button>
+        </div>
+    </div>
+</article>

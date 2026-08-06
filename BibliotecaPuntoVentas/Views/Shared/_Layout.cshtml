@@ -1,0 +1,41 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#07111c" />
+    <title>@ViewData["Title"] - NovaPOS</title>
+
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/novapos.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body>
+    <div class="nova-app">
+        <partial name="_Sidebar" />
+
+        <div class="nova-sidebar-backdrop" id="sidebarBackdrop"></div>
+
+        <main class="nova-main">
+            <partial name="_Topbar" />
+
+            <section class="nova-content container-fluid">
+                <partial name="_Alertas" />
+                @RenderBody()
+            </section>
+        </main>
+    </div>
+
+    <div class="nova-toast" id="novaToast" role="status" aria-live="polite">
+        <div class="nova-toast-icon" id="novaToastIcon">✓</div>
+        <div>
+            <strong id="novaToastTitle">Operación completada</strong>
+            <small id="novaToastText">Los cambios se guardaron correctamente.</small>
+        </div>
+    </div>
+
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/novapos-site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
