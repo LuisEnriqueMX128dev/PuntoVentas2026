@@ -176,7 +176,7 @@
                     {
                         var esSalida = movimiento.TipoMovimiento.Contains("SALIDA");
                         <tr>
-                            <td>@movimiento.FechaMovimiento.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                            <td>@movimiento.FechaMovimiento.ToString("dd/MM/yyyy HH:mm")</td>
                             <td>
                                 <strong>@movimiento.NombreProducto</strong>
                                 <small>@movimiento.CodigoProducto</small>
