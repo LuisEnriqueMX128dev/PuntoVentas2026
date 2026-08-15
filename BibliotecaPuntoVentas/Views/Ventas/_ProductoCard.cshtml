@@ -9,7 +9,8 @@
     <div class="nova-product-image">
         @if (!string.IsNullOrWhiteSpace(Model.UrlImagen))
         {
-            <img src="@Model.UrlImagen" alt="@Model.Nombre" />
+
+            <img src="@Url.Content($"~{Model.UrlImagen}")" alt="@Model.Nombre">
         }
         else
         {

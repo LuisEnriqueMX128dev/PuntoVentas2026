@@ -54,6 +54,25 @@
             <span>Productos</span>
         </a>
 
+        <a asp-controller="Categorias"
+           asp-action="Index"
+           class="nova-nav-item @(controllerActual == "Categorias" ? "active" : string.Empty)">
+
+            <svg viewBox="0 0 24 24"
+                 fill="none"
+                 stroke="currentColor"
+                 stroke-width="2">
+                <path d="M4 7h16"></path>
+                <path d="M4 12h16"></path>
+                <path d="M4 17h16"></path>
+                <circle cx="7" cy="7" r="1"></circle>
+                <circle cx="7" cy="12" r="1"></circle>
+                <circle cx="7" cy="17" r="1"></circle>
+            </svg>
+
+            <span>Categorías</span>
+        </a>
+
         <a asp-controller="Inventario"
            asp-action="Index"
            class="nova-nav-item @(controllerActual == "Inventario" ? "active" : string.Empty)">
@@ -69,10 +88,10 @@
 
     <div class="nova-sidebar-footer">
         <div class="nova-user-card">
-            <span class="nova-avatar">US</span>
+            <span class="nova-avatar">TL</span>
             <span>
                 <strong>Usuario sistema</strong>
-                <small>Acceso temporal</small>
+                @* <small>Acceso temporal</small> *@
             </span>
         </div>
     </div>

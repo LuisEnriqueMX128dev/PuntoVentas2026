@@ -4,10 +4,11 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#07111c" />
-    <title>@ViewData["Title"] - NovaPOS</title>
+    <title>@ViewData["Title"] - Tyliam Print</title>
 
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/novapos.css" asp-append-version="true" />
+    <link rel="icon" type="image/x-icon" href="@Url.Content("~/print.ico")" />
     @await RenderSectionAsync("Styles", required: false)
 </head>
 <body>
@@ -17,6 +18,8 @@
         <div class="nova-sidebar-backdrop" id="sidebarBackdrop"></div>
 
         <main class="nova-main">
+
+           @*  //vista parcial del header *@
             <partial name="_Topbar" />
 
             <section class="nova-content container-fluid">
@@ -36,6 +39,7 @@
 
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/novapos-site.js" asp-append-version="true"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

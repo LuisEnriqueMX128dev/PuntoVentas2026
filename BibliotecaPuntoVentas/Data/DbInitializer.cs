@@ -112,36 +112,20 @@ namespace BibliotecaPuntoVentas.Data
             {
                 new()
                 {
-                    Id = Guid.NewGuid(),
-                    Nombre = "Abarrotes",
-                    Descripcion = "Productos de consumo general.",
+                    Id = new Guid("A5D9874E-EC1A-4049-847B-143E0E8D5DB8"),
+                    Nombre = "Prendas",
+                    Descripcion = "Categoría para todo el inventario textil de vestir. Sirve para agrupar los reportes de ventas globales del departamento de ropa y aislar estos artículos de otras unidades de negocio. ",
                     Estatus = true,
-                    AltaSistema = DateTime.UtcNow
+                    AltaSistema = DateTime.Now
                 },
                 new()
                 {
-                    Id = Guid.NewGuid(),
-                    Nombre = "Bebidas",
-                    Descripcion = "Bebidas y líquidos.",
+                    Id = new Guid("438C71F8-9C7B-4447-A98B-8333550B2243"),
+                    Nombre = "Camisas",
+                    Descripcion = "Comprende exclusivamente artículos superiores con cuello estructurado y botonadura completa (manga corta o larga).",
                     Estatus = true,
-                    AltaSistema = DateTime.UtcNow
+                    AltaSistema = DateTime.Now
                 },
-                new()
-                {
-                    Id = Guid.NewGuid(),
-                    Nombre = "Snacks",
-                    Descripcion = "Botanas, dulces y alimentos rápidos.",
-                    Estatus = true,
-                    AltaSistema = DateTime.UtcNow
-                },
-                new()
-                {
-                    Id = Guid.NewGuid(),
-                    Nombre = "Lácteos",
-                    Descripcion = "Leche, yogurt y productos derivados.",
-                    Estatus = true,
-                    AltaSistema = DateTime.UtcNow
-                }
             };
 
             await context.CategoriasProducto

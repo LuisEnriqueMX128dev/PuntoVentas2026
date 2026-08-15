@@ -58,8 +58,7 @@ namespace BibliotecaPuntoVentas.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Registrar(
-            [FromBody] RegistrarVentaViewModel model)
+        public async Task<IActionResult> Registrar([FromBody] RegistrarVentaViewModel model)
         {
             if (!ModelState.IsValid)
             {

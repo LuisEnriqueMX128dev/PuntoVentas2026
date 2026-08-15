@@ -196,7 +196,7 @@
                 <div>
                     <h3>Fotografía</h3>
                     <p>
-                        JPG, PNG o WEBP de máximo 5 MB.
+                        JPG, PNG o WEBP de máximo 20 MB.
                     </p>
                 </div>
             </div>
@@ -208,9 +208,8 @@
                     @if (!string.IsNullOrWhiteSpace(
                             Model.UrlImagenActual))
                     {
-                        <img src="@Model.UrlImagenActual"
-                             id="vistaPrevia"
-                             alt="Fotografía del producto" />
+                        <img src="@Url.Content($"~{Model.UrlImagenActual}")" id="vistaPrevia" alt="Fotografía del producto" />
+
                     }
                     else
                     {

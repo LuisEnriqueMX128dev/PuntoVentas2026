@@ -1,84 +1,195 @@
-(() => {
-    const canvas = document.getElementById('dashboardSalesChart');
-    const data = window.novaDashboardData;
+document.addEventListener("DOMContentLoaded", function () {
 
-    if (!canvas || !data) {
+    const canvas =
+        document.getElementById(
+            "dashboardSalesChart");
+
+    if (!canvas) {
         return;
     }
 
-    const draw = () => {
-        const context = canvas.getContext('2d');
-        const rectangle = canvas.getBoundingClientRect();
-        const ratio = window.devicePixelRatio || 1;
-        const width = Math.max(rectangle.width, 300);
-        const height = Math.max(rectangle.height, 220);
-        const padding = 38;
-        const values = data.values.map(Number);
-        const maximum = Math.max(...values, 1) * 1.18;
+    if (!window.novaDashboardData) {
+        return;
+    }
 
-        canvas.width = width * ratio;
-        canvas.height = height * ratio;
-        context.setTransform(ratio, 0, 0, ratio, 0, 0);
-        context.clearRect(0, 0, width, height);
+    const data =
+        window.novaDashboardData;
 
-        context.lineWidth = 1;
-        context.strokeStyle = 'rgba(255,255,255,.07)';
+    new Chart(canvas, {
+        type: "line",
 
-        for (let index = 0; index < 5; index += 1) {
-            const y = padding + ((height - padding * 2) * index / 4);
-            context.beginPath();
-            context.moveTo(padding, y);
-            context.lineTo(width - padding, y);
-            context.stroke();
-        }
+        data: {
+            labels: data.labels,
 
-        const points = values.map((value, index) => ({
-            x: padding + ((width - padding * 2) * index / Math.max(values.length - 1, 1)),
-            y: height - padding - ((height - padding * 2) * value / maximum)
-        }));
+            datasets: [
+                {
+                    label: "Ingresos",
 
-        const fill = context.createLinearGradient(0, padding, 0, height - padding);
-        fill.addColorStop(0, 'rgba(22,140,255,.32)');
-        fill.addColorStop(1, 'rgba(22,140,255,0)');
+                    data: data.values,
 
-        context.beginPath();
-        context.moveTo(points[0].x, height - padding);
-        points.forEach(point => context.lineTo(point.x, point.y));
-        context.lineTo(points[points.length - 1].x, height - padding);
-        context.closePath();
-        context.fillStyle = fill;
-        context.fill();
+                    borderColor: "#168cff",
 
-        context.beginPath();
-        points.forEach((point, index) => {
-            if (index === 0) {
-                context.moveTo(point.x, point.y);
-            } else {
-                context.lineTo(point.x, point.y);
+                    backgroundColor:
+                        "rgba(22, 140, 255, .16)",
+
+                    borderWidth: 3,
+
+                    fill: true,
+
+                    tension: 0.35,
+
+                    pointRadius: 4,
+
+                    pointHoverRadius: 7,
+
+                    pointBackgroundColor:
+                        "#07111c",
+
+                    pointBorderColor:
+                        "#168cff",
+
+                    pointBorderWidth: 2,
+
+                    pointHoverBackgroundColor:
+                        "#168cff",
+
+                    pointHoverBorderColor:
+                        "#ffffff",
+
+                    pointHoverBorderWidth: 2
+                }
+            ]
+        },
+
+        options: {
+            responsive: true,
+
+            maintainAspectRatio: false,
+
+            interaction: {
+                mode: "index",
+                intersect: false
+            },
+
+            plugins: {
+                legend: {
+                    display: false
+                },
+
+                tooltip: {
+                    enabled: true,
+
+                    backgroundColor:
+                        "#0f1f30",
+
+                    titleColor:
+                        "#ffffff",
+
+                    bodyColor:
+                        "#c5d3e3",
+
+                    borderColor:
+                        "rgba(255,255,255,.12)",
+
+                    borderWidth: 1,
+
+                    padding: 12,
+
+                    displayColors: false,
+
+                    callbacks: {
+
+                        title: function (
+                            tooltipItems) {
+
+                            const index =
+                                tooltipItems[0]
+                                    .dataIndex;
+
+                            return data.dates[index];
+                        },
+
+                        label: function (
+                            context) {
+
+                            const index =
+                                context.dataIndex;
+
+                            const cantidad =
+                                data.quantities[index];
+
+                            const total =
+                                Number(
+                                    context.raw);
+
+                            return [
+                                `Ventas: ${cantidad}`,
+                                `Ingresos: ${total.toLocaleString(
+                                    "es-MX",
+                                    {
+                                        style:
+                                            "currency",
+                                        currency:
+                                            "MXN"
+                                    }
+                                )}`
+                            ];
+                        }
+                    }
+                }
+            },
+
+            scales: {
+                x: {
+                    grid: {
+                        display: false
+                    },
+
+                    ticks: {
+                        color: "#8fa1b6"
+                    },
+
+                    border: {
+                        display: false
+                    }
+                },
+
+                y: {
+                    beginAtZero: true,
+
+                    grid: {
+                        color:
+                            "rgba(255,255,255,.06)"
+                    },
+
+                    ticks: {
+                        color: "#8fa1b6",
+
+                        callback:
+                            function (value) {
+
+                                return value
+                                    .toLocaleString(
+                                        "es-MX",
+                                        {
+                                            style:
+                                                "currency",
+
+                                            currency:
+                                                "MXN",
+
+                                            maximumFractionDigits:
+                                                0
+                                        }
+                                    );
+                            }
+                    },
+
+                    border: {
+                        display: false
+                    }
+                }
             }
-        });
-        context.strokeStyle = '#168cff';
-        context.lineWidth = 3;
-        context.stroke();
-
-        points.forEach(point => {
-            context.beginPath();
-            context.arc(point.x, point.y, 4, 0, Math.PI * 2);
-            context.fillStyle = '#07111c';
-            context.fill();
-            context.strokeStyle = '#29a0ff';
-            context.lineWidth = 2;
-            context.stroke();
-        });
-
-        context.fillStyle = '#8093aa';
-        context.font = '12px system-ui';
-        context.textAlign = 'center';
-        data.labels.forEach((label, index) => {
-            context.fillText(label, points[index].x, height - 9);
-        });
-    };
-
-    draw();
-    window.addEventListener('resize', () => window.setTimeout(draw, 100));
-})();
+        }
+    });
+});

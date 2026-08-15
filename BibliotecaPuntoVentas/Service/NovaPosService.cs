@@ -20,7 +20,7 @@ namespace BibliotecaPuntoVentas.Service
         private readonly string _rutaFotosProductos;
         private readonly string _urlFotosProductos;
 
-        private const long PesoMaximoFoto = 5 * 1024 * 1024;
+        private const long PesoMaximoFoto = 20 * 1024 * 1024;
 
         private static readonly HashSet<string>ExtensionesPermitidas =new(StringComparer.OrdinalIgnoreCase)
         {
@@ -52,122 +52,250 @@ namespace BibliotecaPuntoVentas.Service
 
         #region Dashboard
 
-        public async Task<DashboardViewModel> ObtenerDashboardAsync()
+        public async Task<DashboardViewModel> ObtenerDashboardAsync(DateTime? fechaInicio = null,DateTime? fechaFin = null)
         {
             var hoy = DateTime.Today;
-            var manana = hoy.AddDays(1);
-            var ayer = hoy.AddDays(-1);
-            var inicioSemana = hoy.AddDays(-6);
-            var inicioMes = new DateTime(hoy.Year, hoy.Month, 1);
 
-            var ventasHoyConsulta = _context.Ventas
+            var inicio = fechaInicio?.Date
+                ?? hoy.AddDays(-6);
+
+            var fin = fechaFin?.Date
+                ?? hoy;
+
+            if (inicio > fin)
+            {
+                throw new InvalidOperationException(
+                    "La fecha inicial no puede ser mayor que la fecha final.");
+            }
+
+            /*
+             * Sumamos un día y usamos <
+             * para incluir completamente la fecha final.
+             */
+            var finExclusivo = fin.AddDays(1);
+
+            var ventasRango = _context.Ventas
                 .AsNoTracking()
-                .Where(v => !v.Cancelada &&
-                            v.FechaVenta >= hoy &&
-                            v.FechaVenta < manana);
+                .Where(v =>
+                    !v.Cancelada &&
+                    v.FechaVenta >= inicio &&
+                    v.FechaVenta < finExclusivo);
 
-            var ventasAyerConsulta = _context.Ventas
+            var gananciaTotalFiltro =
+            await _context.DetallesVenta
                 .AsNoTracking()
-                .Where(v => !v.Cancelada &&
-                            v.FechaVenta >= ayer &&
-                            v.FechaVenta < hoy);
+                .Where(d =>
+                    !d.Venta!.Cancelada &&
+                    d.Venta.FechaVenta >= inicio &&
+                    d.Venta.FechaVenta < finExclusivo)
+                .SumAsync(d =>
+                    (decimal?)(
+                        d.Subtotal -
+                        (d.Producto!.PrecioCompra * d.Cantidad)
+                    ))
+            ?? 0;
 
-            var ventasHoy = await ventasHoyConsulta.SumAsync(v => (decimal?)v.Total) ?? 0m;
-            var ventasAyer = await ventasAyerConsulta.SumAsync(v => (decimal?)v.Total) ?? 0m;
-            var cantidadVentasHoy = await ventasHoyConsulta.CountAsync();
+            var totalVendidoFiltro =
+            await ventasRango
+                .SumAsync(v => (decimal?)v.Total)
+            ?? 0;
 
-            var porcentajeCambio = ventasAyer > 0
-                ? Math.Round(((ventasHoy - ventasAyer) / ventasAyer) * 100m, 2)
-                : ventasHoy > 0 ? 100m : 0m;
-
-            var ventasAgrupadas = await _context.Ventas
+            var ventasHoy = await _context.Ventas
                 .AsNoTracking()
-                .Where(v => !v.Cancelada &&
-                            v.FechaVenta >= inicioSemana &&
-                            v.FechaVenta < manana)
+                .Where(v =>
+                    !v.Cancelada &&
+                    v.FechaVenta >= hoy &&
+                    v.FechaVenta < hoy.AddDays(1))
+                .SumAsync(v => (decimal?)v.Total)
+                ?? 0;
+
+            var cantidadVentasHoy = await _context.Ventas
+                .AsNoTracking()
+                .CountAsync(v =>
+                    !v.Cancelada &&
+                    v.FechaVenta >= hoy &&
+                    v.FechaVenta < hoy.AddDays(1));
+
+            var ventasAyer = await _context.Ventas
+                .AsNoTracking()
+                .Where(v =>
+                    !v.Cancelada &&
+                    v.FechaVenta >= hoy.AddDays(-1) &&
+                    v.FechaVenta < hoy)
+                .SumAsync(v => (decimal?)v.Total)
+                ?? 0;
+
+            decimal porcentajeCambio = 0;
+
+            if (ventasAyer > 0)
+            {
+                porcentajeCambio =
+                    ((ventasHoy - ventasAyer) / ventasAyer) * 100;
+            }
+            else if (ventasHoy > 0)
+            {
+                porcentajeCambio = 100;
+            }
+
+            var ventasAgrupadas = await ventasRango
                 .GroupBy(v => v.FechaVenta.Date)
                 .Select(g => new
                 {
                     Fecha = g.Key,
                     Total = g.Sum(v => v.Total),
-                    Cantidad = g.Count()
+                    CantidadVentas = g.Count()
                 })
+                .OrderBy(x => x.Fecha)
                 .ToListAsync();
 
-            var ventasUltimosDias = Enumerable.Range(0, 7)
-                .Select(indice => inicioSemana.AddDays(indice))
-                .Select(fecha =>
+            /*
+             * Creamos todos los días del rango.
+             * Así también aparecen días sin ventas en la gráfica.
+             */
+            var ventasUltimosDias =
+                Enumerable.Range(
+                    0,
+                    (fin - inicio).Days + 1)
+                .Select(i =>
                 {
-                    var registro = ventasAgrupadas.FirstOrDefault(v => v.Fecha == fecha.Date);
+                    var fecha = inicio.AddDays(i);
+
+                    var venta =
+                        ventasAgrupadas
+                            .FirstOrDefault(v =>
+                                v.Fecha == fecha);
 
                     return new DashboardVentaDiariaViewModel
                     {
                         Fecha = fecha,
-                        Dia = fecha.ToString("ddd"),
-                        Total = registro?.Total ?? 0m,
-                        CantidadVentas = registro?.Cantidad ?? 0
+
+                        Dia = fecha.ToString(
+                            "dd/MM"),
+
+                        Total =
+                            venta?.Total ?? 0,
+
+                        CantidadVentas =
+                            venta?.CantidadVentas ?? 0
                     };
                 })
                 .ToList();
 
-            var productosMasVendidos = await _context.DetallesVenta
-                .AsNoTracking()
-                .Where(d => !d.Venta!.Cancelada && d.Venta.FechaVenta >= inicioMes)
-                .GroupBy(d => new
-                {
-                    d.ProductoId,
-                    d.Producto!.Codigo,
-                    d.Producto.Nombre,
-                    Categoria = d.Producto.CategoriaProducto!.Nombre,
-                    d.Producto.Existencia,
-                    d.Producto.StockMinimo
-                })
-                .Select(g => new DashboardProductoVendidoViewModel
-                {
-                    ProductoId = g.Key.ProductoId,
-                    Codigo = g.Key.Codigo,
-                    Nombre = g.Key.Nombre,
-                    Categoria = g.Key.Categoria,
-                    CantidadVendida = g.Sum(d => d.Cantidad),
-                    TotalVendido = g.Sum(d => d.Subtotal),
-                    Existencia = g.Key.Existencia,
-                    StockMinimo = g.Key.StockMinimo
-                })
-                .OrderByDescending(p => p.CantidadVendida)
-                .Take(5)
-                .ToListAsync();
+            var productosMasVendidos =
+                await _context.DetallesVenta
+                    .AsNoTracking()
+                    .Where(d =>
+                        !d.Venta!.Cancelada &&
+                        d.Venta.FechaVenta >= inicio &&
+                        d.Venta.FechaVenta < finExclusivo)
+                    .GroupBy(d => new
+                    {
+                        d.ProductoId,
+                        d.Producto!.Codigo,
+                        d.Producto.Nombre,
+                        Categoria =
+                            d.Producto.CategoriaProducto!.Nombre
+                    })
+                    .Select(g =>
+                        new DashboardProductoVendidoViewModel
+                        {
+                            ProductoId =
+                                g.Key.ProductoId,
 
-            var ventasRecientes = await _context.Ventas
-                .AsNoTracking()
-                .OrderByDescending(v => v.FechaVenta)
-                .Take(5)
-                .Select(v => new DashboardActividadViewModel
-                {
-                    Titulo = "Venta " + v.Folio,
-                    Descripcion = v.Cancelada
-                        ? "Venta cancelada"
-                        : "Venta completada por " + v.Total.ToString("C2"),
-                    TipoActividad = v.Cancelada ? "CANCELADA" : "VENTA",
-                    Fecha = v.FechaVenta,
-                    Referencia = v.Folio
-                })
-                .ToListAsync();
+                            Codigo =
+                                g.Key.Codigo,
+
+                            Nombre =
+                                g.Key.Nombre,
+
+                            Categoria =
+                                g.Key.Categoria,
+
+                            CantidadVendida =
+                                g.Sum(x => x.Cantidad),
+
+                            TotalVendido =
+                                g.Sum(x => x.Subtotal)
+                        })
+                    .OrderByDescending(x =>
+                        x.CantidadVendida)
+                    .Take(5)
+                    .ToListAsync();
+
+            var actividades =
+                await _context.Ventas
+                    .AsNoTracking()
+                    .OrderByDescending(v =>
+                        v.FechaVenta)
+                    .Take(6)
+                    .Select(v =>
+                        new DashboardActividadViewModel
+                        {
+                            Titulo =
+                                "Venta " + v.Folio,
+
+                            Descripcion =
+                                v.Cancelada
+                                    ? "Venta cancelada"
+                                    : "Venta completada por " +
+                                      v.Total.ToString("C2"),
+
+                            TipoActividad =
+                                v.Cancelada
+                                    ? "CANCELADA"
+                                    : "VENTA",
+
+                            Fecha =
+                                v.FechaVenta,
+
+                            Referencia =
+                                v.Folio
+                        })
+                    .ToListAsync();
 
             return new DashboardViewModel
             {
+                FechaInicio = inicio,
+                FechaFin = fin,
+
                 VentasHoy = ventasHoy,
                 VentasAyer = ventasAyer,
                 CantidadVentasHoy = cantidadVentasHoy,
-                TotalProductos = await _context.Productos.CountAsync(p => p.Estatus),
-                TotalClientes = await _context.Clientes.CountAsync(c => c.Estatus),
-                ProductosStockBajo = await _context.Productos.CountAsync(p =>
-                    p.Estatus && p.Existencia > 0 && p.Existencia <= p.StockMinimo),
-                ProductosAgotados = await _context.Productos.CountAsync(p =>
-                    p.Estatus && p.Existencia <= 0),
-                PorcentajeCambioVentas = porcentajeCambio,
-                VentasUltimosDias = ventasUltimosDias,
-                ProductosMasVendidos = productosMasVendidos,
-                ActividadesRecientes = ventasRecientes
+
+                TotalProductos =
+                    await _context.Productos
+                        .CountAsync(p => p.Estatus),
+
+                TotalClientes =
+                    await _context.Clientes
+                        .CountAsync(c => c.Estatus),
+
+                ProductosStockBajo =
+                    await _context.Productos
+                        .CountAsync(p =>
+                            p.Estatus &&
+                            p.Existencia > 0 &&
+                            p.Existencia <= p.StockMinimo),
+
+                ProductosAgotados =
+                    await _context.Productos
+                        .CountAsync(p =>
+                            p.Estatus &&
+                            p.Existencia <= 0),
+
+                PorcentajeCambioVentas =
+                    porcentajeCambio,
+
+                VentasUltimosDias =
+                    ventasUltimosDias,
+
+                ProductosMasVendidos =
+                    productosMasVendidos,
+
+                ActividadesRecientes =
+                    actividades,
+                TotalVendidoFiltro = totalVendidoFiltro,
+                GananciaTotalFiltro = gananciaTotalFiltro
             };
         }
 
@@ -177,41 +305,31 @@ namespace BibliotecaPuntoVentas.Service
 
         public async Task<List<CategoriaProductoViewModel>> ObtenerCategoriasAsync()
         {
-            return await _context.CategoriasProducto
-                .AsNoTracking()
-                .OrderBy(c => c.Nombre)
-                .Select(c => new CategoriaProductoViewModel
-                {
-                    Id = c.Id,
-                    Nombre = c.Nombre,
-                    Descripcion = c.Descripcion,
-                    Estatus = c.Estatus,
-                    TotalProductos = c.Productos != null ? c.Productos.Count : 0
-                })
-                .ToListAsync();
+            return await _context.CategoriasProducto.AsNoTracking().OrderBy(c => c.Nombre).Select(c => new CategoriaProductoViewModel
+            {
+                Id = c.Id,
+                Nombre = c.Nombre,
+                Descripcion = c.Descripcion,
+                Estatus = c.Estatus,
+                TotalProductos = _context.Productos.Count(p => p.CategoriaProductoId == c.Id)
+            }).ToListAsync();
         }
-
-        public async Task<CategoriaProductoViewModel?> ObtenerCategoriaPorIdAsync(Guid categoriaId)
+        public async Task<CategoriaProductoFormularioViewModel?> ObtenerCategoriaPorIdAsync(Guid categoriaId)
         {
-            return await _context.CategoriasProducto
-                .AsNoTracking()
-                .Where(c => c.Id == categoriaId)
-                .Select(c => new CategoriaProductoViewModel
-                {
-                    Id = c.Id,
-                    Nombre = c.Nombre,
-                    Descripcion = c.Descripcion,
-                    Estatus = c.Estatus,
-                    TotalProductos = c.Productos != null ? c.Productos.Count : 0
-                })
-                .FirstOrDefaultAsync();
+            return await _context.CategoriasProducto.AsNoTracking().Where(c => c.Id == categoriaId).Select(c => new CategoriaProductoFormularioViewModel
+            {
+                Id = c.Id,
+                Nombre = c.Nombre,
+                Descripcion = c.Descripcion,
+                Estatus = c.Estatus
+            }).FirstOrDefaultAsync();
         }
 
         public async Task<Guid> CrearCategoriaAsync(CategoriaProductoFormularioViewModel model)
         {
             var nombre = model.Nombre.Trim();
-            var existe = await _context.CategoriasProducto
-                .AnyAsync(c => c.Nombre.ToLower() == nombre.ToLower());
+
+            var existe = await _context.CategoriasProducto.AnyAsync(c => c.Nombre.ToUpper() == nombre.ToUpper());
 
             if (existe)
             {
@@ -229,6 +347,7 @@ namespace BibliotecaPuntoVentas.Service
 
             await _context.CategoriasProducto.AddAsync(categoria);
             await _context.SaveChangesAsync();
+
             return categoria.Id;
         }
 
@@ -239,8 +358,7 @@ namespace BibliotecaPuntoVentas.Service
                 return false;
             }
 
-            var categoria = await _context.CategoriasProducto
-                .FirstOrDefaultAsync(c => c.Id == model.Id.Value);
+            var categoria = await _context.CategoriasProducto.FirstOrDefaultAsync(c => c.Id == model.Id.Value);
 
             if (categoria is null)
             {
@@ -248,8 +366,8 @@ namespace BibliotecaPuntoVentas.Service
             }
 
             var nombre = model.Nombre.Trim();
-            var existe = await _context.CategoriasProducto.AnyAsync(c =>
-                c.Id != model.Id.Value && c.Nombre.ToLower() == nombre.ToLower());
+
+            var existe = await _context.CategoriasProducto.AnyAsync(c => c.Id != model.Id.Value && c.Nombre.ToUpper() == nombre.ToUpper());
 
             if (existe)
             {
@@ -262,13 +380,13 @@ namespace BibliotecaPuntoVentas.Service
             categoria.ModificacionSistema = DateTime.Now;
 
             await _context.SaveChangesAsync();
+
             return true;
         }
 
         public async Task<bool> CambiarEstatusCategoriaAsync(Guid categoriaId)
         {
-            var categoria = await _context.CategoriasProducto
-                .FirstOrDefaultAsync(c => c.Id == categoriaId);
+            var categoria = await _context.CategoriasProducto.FirstOrDefaultAsync(c => c.Id == categoriaId);
 
             if (categoria is null)
             {
@@ -277,7 +395,31 @@ namespace BibliotecaPuntoVentas.Service
 
             categoria.Estatus = !categoria.Estatus;
             categoria.ModificacionSistema = DateTime.Now;
+
             await _context.SaveChangesAsync();
+
+            return true;
+        }
+
+        public async Task<bool> EliminarCategoriaAsync(Guid categoriaId)
+        {
+            var categoria = await _context.CategoriasProducto.FirstOrDefaultAsync(c => c.Id == categoriaId);
+
+            if (categoria is null)
+            {
+                return false;
+            }
+
+            var tieneProductos = await _context.Productos.AnyAsync(p => p.CategoriaProductoId == categoriaId);
+
+            if (tieneProductos)
+            {
+                throw new InvalidOperationException("No puedes eliminar esta categoría porque tiene productos asociados.");
+            }
+
+            _context.CategoriasProducto.Remove(categoria);
+            await _context.SaveChangesAsync();
+
             return true;
         }
 
@@ -895,7 +1037,7 @@ namespace BibliotecaPuntoVentas.Service
                 CajaId = caja?.Id,
                 TieneCajaAbierta = caja is not null,
                 CajaAbierta = caja,
-                PorcentajeImpuesto = configuracion?.PorcentajeImpuesto ?? 16m,
+                PorcentajeImpuesto = configuracion?.PorcentajeImpuesto ?? 11.5m,
                 Productos = await productosConsulta
                     .OrderBy(p => p.Nombre)
                     .Select(p => new ProductoPuntoVentaViewModel
@@ -974,9 +1116,7 @@ namespace BibliotecaPuntoVentas.Service
                 .FirstOrDefaultAsync();
         }
 
-        public async Task<ResultadoVentaViewModel> RegistrarVentaAsync(
-            RegistrarVentaViewModel model,
-            string? usuarioId = null)
+        public async Task<ResultadoVentaViewModel> RegistrarVentaAsync(RegistrarVentaViewModel model, string? usuarioId = null)
         {
             usuarioId ??= SistemaConstantes.UsuarioSistemaId;
 
@@ -1002,34 +1142,25 @@ namespace BibliotecaPuntoVentas.Service
 
             try
             {
-                var caja = await _context.Cajas
-                    .FirstOrDefaultAsync(c =>
-                        c.Id == model.CajaId && c.Abierta && c.Estatus);
+                var caja = await _context.Cajas.FirstOrDefaultAsync(c => c.Id == model.CajaId && c.Abierta && c.Estatus);
 
                 if (caja is null)
                 {
                     throw new InvalidOperationException("No existe una caja abierta para registrar la venta.");
                 }
 
-                var idsProductos = model.Detalles
-                    .Select(d => d.ProductoId)
-                    .Distinct()
-                    .ToList();
+                var idsProductos = model.Detalles.Select(d => d.ProductoId).Distinct().ToList();
 
-                var productos = await _context.Productos
-                    .Where(p => idsProductos.Contains(p.Id) && p.Estatus)
-                    .ToListAsync();
+                var productos = await _context.Productos.Where(p => idsProductos.Contains(p.Id) && p.Estatus).ToListAsync();
 
                 if (productos.Count != idsProductos.Count)
                 {
                     throw new InvalidOperationException("Uno o más productos no existen o están inactivos.");
                 }
 
-                var configuracion = await _context.ConfiguracionesNegocio
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(c => c.Estatus);
+                var configuracion = await _context.ConfiguracionesNegocio.AsNoTracking().FirstOrDefaultAsync(c => c.Estatus);
 
-                var tasaImpuesto = configuracion?.PorcentajeImpuesto ?? 16m;
+                var tasaImpuesto = configuracion?.PorcentajeImpuesto ?? 11.5m;
                 var ahora = DateTime.Now;
                 var detallesVenta = new List<DetalleVenta>();
                 decimal importeLineas = 0m;
@@ -1045,13 +1176,14 @@ namespace BibliotecaPuntoVentas.Service
 
                     if (producto.Existencia < detalleModel.Cantidad)
                     {
-                        throw new InvalidOperationException(
-                            $"No hay existencia suficiente de {producto.Nombre}. Disponible: {producto.Existencia}.");
+                        throw new InvalidOperationException($"No hay existencia suficiente de {producto.Nombre}. Disponible: {producto.Existencia}.");
                     }
 
-                    var importeBruto = producto.PrecioVenta * detalleModel.Cantidad;
-                    var descuentoLinea = Math.Clamp(detalleModel.Descuento, 0m, importeBruto);
-                    var importeLinea = importeBruto - descuentoLinea;
+                    var precioUnitario = decimal.Round(producto.PrecioVenta, 2, MidpointRounding.AwayFromZero);
+                    var importeBruto = decimal.Round(precioUnitario * detalleModel.Cantidad, 2, MidpointRounding.AwayFromZero);
+                    var descuentoLinea = decimal.Round(Math.Clamp(detalleModel.Descuento, 0m, importeBruto), 2, MidpointRounding.AwayFromZero);
+                    var importeLinea = decimal.Round(importeBruto - descuentoLinea, 2, MidpointRounding.AwayFromZero);
+
                     importeLineas += importeLinea;
 
                     detallesVenta.Add(new DetalleVenta
@@ -1059,31 +1191,29 @@ namespace BibliotecaPuntoVentas.Service
                         Id = Guid.NewGuid(),
                         ProductoId = producto.Id,
                         Cantidad = detalleModel.Cantidad,
-                        PrecioUnitario = producto.PrecioVenta,
+                        PrecioUnitario = precioUnitario,
                         Descuento = descuentoLinea,
                         Subtotal = importeLinea,
                         AltaSistema = ahora
                     });
                 }
 
-                var descuentoGlobal = Math.Clamp(model.Descuento, 0m, importeLineas);
-                var total = decimal.Round(importeLineas - descuentoGlobal, 2);
-                var impuesto = tasaImpuesto > 0
-                    ? decimal.Round(total - (total / (1m + (tasaImpuesto / 100m))), 2)
-                    : 0m;
-                var subtotal = total - impuesto;
+                importeLineas = decimal.Round(importeLineas, 2, MidpointRounding.AwayFromZero);
 
-                var totalPagos = model.Pagos.Sum(p => p.Monto);
-                if (Math.Abs(totalPagos - total) > 0.01m)
+                var descuentoGlobal = decimal.Round(Math.Clamp(model.Descuento, 0m, importeLineas), 2, MidpointRounding.AwayFromZero);
+                var total = decimal.Round(importeLineas - descuentoGlobal, 2, MidpointRounding.AwayFromZero);
+                var impuesto = tasaImpuesto > 0 ? decimal.Round(total - (total / (1m + (tasaImpuesto / 100m))), 2, MidpointRounding.AwayFromZero) : 0m;
+                var subtotal = decimal.Round(total - impuesto, 2, MidpointRounding.AwayFromZero);
+
+                var totalPagos = decimal.Round(model.Pagos.Sum(p => p.Monto), 2, MidpointRounding.AwayFromZero);
+
+                if (totalPagos != total)
                 {
-                    throw new InvalidOperationException(
-                        $"La suma de los pagos ({totalPagos:C2}) debe ser igual al total ({total:C2}).");
+                    throw new InvalidOperationException($"La suma de los pagos ({totalPagos:C2}) debe ser igual al total ({total:C2}).");
                 }
 
                 var idsMetodosPago = model.Pagos.Select(p => p.MetodoPagoId).Distinct().ToList();
-                var metodosPago = await _context.MetodosPago
-                    .Where(m => idsMetodosPago.Contains(m.Id) && m.Estatus)
-                    .ToDictionaryAsync(m => m.Id, m => m.Nombre);
+                var metodosPago = await _context.MetodosPago.Where(m => idsMetodosPago.Contains(m.Id) && m.Estatus).ToDictionaryAsync(m => m.Id, m => m.Nombre);
 
                 if (metodosPago.Count != idsMetodosPago.Count)
                 {
@@ -1092,6 +1222,7 @@ namespace BibliotecaPuntoVentas.Service
 
                 var ventaId = Guid.NewGuid();
                 var folio = GenerarFolioVenta();
+
                 var venta = new Venta
                 {
                     Id = ventaId,
@@ -1100,7 +1231,7 @@ namespace BibliotecaPuntoVentas.Service
                     UsuarioId = usuarioId,
                     Folio = folio,
                     Subtotal = subtotal,
-                    Descuento = descuentoGlobal + detallesVenta.Sum(d => d.Descuento),
+                    Descuento = decimal.Round(descuentoGlobal + detallesVenta.Sum(d => d.Descuento), 2, MidpointRounding.AwayFromZero),
                     Impuesto = impuesto,
                     Total = total,
                     Cancelada = false,
@@ -1121,25 +1252,22 @@ namespace BibliotecaPuntoVentas.Service
                 {
                     var nombreMetodo = metodosPago[pagoModel.MetodoPagoId];
                     var esEfectivo = nombreMetodo.Equals("Efectivo", StringComparison.OrdinalIgnoreCase);
-                    var montoRecibido = pagoModel.MontoRecibido > 0
-                        ? pagoModel.MontoRecibido
-                        : pagoModel.Monto;
+                    var montoPago = decimal.Round(pagoModel.Monto, 2, MidpointRounding.AwayFromZero);
+                    var montoRecibido = decimal.Round(pagoModel.MontoRecibido > 0 ? pagoModel.MontoRecibido : montoPago, 2, MidpointRounding.AwayFromZero);
 
-                    if (esEfectivo && montoRecibido < pagoModel.Monto)
+                    if (esEfectivo && montoRecibido < montoPago)
                     {
-                        throw new InvalidOperationException("El monto recibido en efectivo es insuficiente.");
+                        throw new InvalidOperationException($"El monto recibido ({montoRecibido:C2}) es menor al monto a cobrar ({montoPago:C2}).");
                     }
 
-                    var cambio = esEfectivo
-                        ? decimal.Round(montoRecibido - pagoModel.Monto, 2)
-                        : 0m;
+                    var cambio = esEfectivo ? decimal.Round(montoRecibido - montoPago, 2, MidpointRounding.AwayFromZero) : 0m;
 
                     pagos.Add(new Pago
                     {
                         Id = Guid.NewGuid(),
                         VentaId = ventaId,
                         MetodoPagoId = pagoModel.MetodoPagoId,
-                        Monto = pagoModel.Monto,
+                        Monto = montoPago,
                         MontoRecibido = montoRecibido,
                         Cambio = cambio,
                         Referencia = pagoModel.Referencia?.Trim(),
@@ -1152,6 +1280,9 @@ namespace BibliotecaPuntoVentas.Service
                     montoRecibidoTotal += montoRecibido;
                 }
 
+                cambioTotal = decimal.Round(cambioTotal, 2, MidpointRounding.AwayFromZero);
+                montoRecibidoTotal = decimal.Round(montoRecibidoTotal, 2, MidpointRounding.AwayFromZero);
+
                 await _context.Ventas.AddAsync(venta);
                 await _context.DetallesVenta.AddRangeAsync(detallesVenta);
                 await _context.Pagos.AddRangeAsync(pagos);
@@ -1160,6 +1291,7 @@ namespace BibliotecaPuntoVentas.Service
                 {
                     var producto = productos.First(p => p.Id == detalleModel.ProductoId);
                     var existenciaAnterior = producto.Existencia;
+
                     producto.Existencia -= detalleModel.Cantidad;
                     producto.ModificacionSistema = ahora;
 
@@ -1189,15 +1321,20 @@ namespace BibliotecaPuntoVentas.Service
                 resultado.MontoRecibido = montoRecibidoTotal;
                 resultado.Cambio = cambioTotal;
                 resultado.Mensaje = "La venta se registró correctamente.";
+
                 return resultado;
             }
             catch (Exception ex)
             {
                 await transaccion.RollbackAsync();
+
                 resultado.Errores.Add(ex.Message);
+
                 return resultado;
             }
         }
+
+
 
         public async Task<CajaViewModel?> ObtenerCajaAbiertaAsync(string? usuarioId = null)
         {

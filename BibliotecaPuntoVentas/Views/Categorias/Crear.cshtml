@@ -1,0 +1,16 @@
+﻿@model BibliotecaPuntoVentas.ViewModels.Productos.CategoriaProductoFormularioViewModel
+
+@{
+    ViewData["Title"] = "Nueva categoría";
+    ViewData["Subtitle"] = "Agrega una categoría para organizar tus productos";
+}
+
+<form asp-action="Crear" method="post">
+    @Html.AntiForgeryToken()
+
+    <partial name="_Formulario" model="Model" />
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

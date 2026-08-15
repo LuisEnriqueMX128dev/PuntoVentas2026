@@ -104,11 +104,10 @@
                                     gap-3">
 
                                     <div class="product-table-image">
-                                        @if (!string.IsNullOrWhiteSpace(
-                                                producto.UrlImagen))
+                                        @if (!string.IsNullOrWhiteSpace(producto.UrlImagen))
                                         {
-                                            <img src="@producto.UrlImagen"
-                                                 alt="@producto.Nombre" />
+                                            <img src="@Url.Content($"~{producto.UrlImagen}")" alt="@producto.Nombre">
+
                                         }
                                         else
                                         {
@@ -180,14 +179,11 @@
                             </td>
 
                             <td>
-                                <div class="d-flex
-                                    justify-content-end
-                                    gap-2">
+                                <div class="d-flex justify-content-end gap-2">
 
                                     <a asp-action="Editar"
                                        asp-route-id="@producto.Id"
-                                       class="btn btn-sm
-                                        btn-nova-secondary">
+                                       class="btn btn-sm btn-nova-secondary btn-accion-tabla">
                                         Editar
                                     </a>
 
@@ -202,16 +198,13 @@
                                                value="@producto.Id" />
 
                                         <button type="submit"
-                                                class="btn btn-sm
-                                            @(producto.Estatus
-                                                ? "btn-outline-danger"
-                                                : "btn-outline-success")">
+                                                class="btn btn-sm btn-accion-tabla @(producto.Estatus ? "btn-outline-danger" : "btn-outline-success")">
 
-                                            @(producto.Estatus
-                                                ? "Desactivar"
-                                                : "Activar")
+                                            @(producto.Estatus ? "Desactivar" : "Activar")
+
                                         </button>
                                     </form>
+
                                 </div>
                             </td>
                         </tr>

@@ -1681,3 +1681,12 @@ textarea {
             height: 220px;
         }
 }
+
+/*Correcion defs botones*/
+.btn-accion-tabla {
+    width: 95px;
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}

@@ -13,7 +13,7 @@ namespace BibliotecaPuntoVentas.ViewModels.Ventas
         public Guid? CajaId { get; set; }
 
         public CajaViewModel? CajaAbierta { get; set; }
-        public decimal PorcentajeImpuesto { get; set; } = 16m;
+        public decimal PorcentajeImpuesto { get; set; } = 11.5m;
         public bool TieneCajaAbierta { get; set; }
 
         public List<ProductoPuntoVentaViewModel> Productos { get; set; }

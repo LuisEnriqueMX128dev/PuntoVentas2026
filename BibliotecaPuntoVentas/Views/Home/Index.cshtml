@@ -3,16 +3,116 @@
 @using BibliotecaPuntoVentas.ViewModels.Shared
 
 @{
-    ViewData["Title"] = "Panel principal";
-    ViewData["Subtitle"] = "Resumen general del negocio";
+    var etiquetas =
+        Model.VentasUltimosDias
+            .Select(v => v.Dia)
+            .ToList();
 
-    var etiquetas = Model.VentasUltimosDias.Select(v => v.Dia).ToList();
-    var valores = Model.VentasUltimosDias.Select(v => v.Total).ToList();
+    var valores =
+        Model.VentasUltimosDias
+            .Select(v => v.Total)
+            .ToList();
+
+    var cantidades =
+        Model.VentasUltimosDias
+            .Select(v => v.CantidadVentas)
+            .ToList();
+
+    var fechas =
+        Model.VentasUltimosDias
+            .Select(v => v.Fecha.ToString("dd/MM/yyyy"))
+            .ToList();
+
     var jsonOptions = new JsonSerializerOptions
     {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        PropertyNamingPolicy =
+            JsonNamingPolicy.CamelCase
     };
 }
+
+<div class="nova-card mb-4">
+    <div class="nova-card-body">
+
+        <div class="row g-3 align-items-end">
+
+            <div class="col-12 col-xl">
+                <form asp-controller="Home"
+                      asp-action="Index"
+                      method="get"
+                      class="row g-3 align-items-end">
+
+                    <div class="col-12 col-md-4">
+                        <label class="form-label">
+                            Fecha inicial
+                        </label>
+
+                        <input type="date"
+                               name="fechaInicio"
+                               value="@Model.FechaInicio?.ToString("yyyy-MM-dd")"
+                               class="form-control nova-input" />
+                    </div>
+
+                    <div class="col-12 col-md-4">
+                        <label class="form-label">
+                            Fecha final
+                        </label>
+
+                        <input type="date"
+                               name="fechaFin"
+                               value="@Model.FechaFin?.ToString("yyyy-MM-dd")"
+                               class="form-control nova-input" />
+                    </div>
+
+                    <div class="col-12 col-md-auto">
+                        <button type="submit"
+                                class="btn btn-nova-primary w-100">
+                            Filtrar
+                        </button>
+                    </div>
+
+                    <div class="col-12 col-md-auto">
+                        <a asp-controller="Home"
+                           asp-action="Index"
+                           class="btn btn-nova-secondary w-100">
+                            Últimos 7 días
+                        </a>
+                    </div>
+
+                </form>
+            </div>
+
+            <div class="col-12 col-md-6 col-xl-3">
+
+                <partial name="_ResumenTarjeta"
+                         model="@(new ResumenTarjetaViewModel
+                         {
+                             Titulo = "Total vendido",
+                             Valor = Model.TotalVendidoFiltro.ToString("C2"),
+                             Subtitulo = $"{Model.FechaInicio:dd/MM/yyyy} al {Model.FechaFin:dd/MM/yyyy}",
+                             TipoIcono = "ventas",
+                             TipoColor = "primary"
+                         })" />
+
+            </div>
+
+            <div class="col-12 col-md-6 col-xl-3">
+
+                <partial name="_ResumenTarjeta"
+                         model="@(new ResumenTarjetaViewModel
+                         {
+                             Titulo = "Ganancia estimada",
+                             Valor = Model.GananciaTotalFiltro.ToString("C2"),
+                             Subtitulo = "Venta menos costo de productos",
+                             TipoIcono = "ganancia",
+                             TipoColor = "green"
+                         })" />
+
+            </div>
+
+        </div>
+
+    </div>
+</div>
 
 <div class="row g-3 g-xl-4">
     <div class="col-12 col-sm-6 col-xl-3">
@@ -201,13 +301,36 @@
         </article>
     </div>
 </div>
-
 @section Scripts {
     <script>
         window.novaDashboardData = {
-            labels: @Html.Raw(JsonSerializer.Serialize(etiquetas, jsonOptions)),
-            values: @Html.Raw(JsonSerializer.Serialize(valores, jsonOptions))
-        };
+            labels:
+                @Html.Raw(
+                                        JsonSerializer.Serialize(
+                                        etiquetas,
+                                                jsonOptions)),
+
+                    values:
+                        @Html.Raw(
+                                JsonSerializer.Serialize(
+                                        valores,
+                                        jsonOptions)),
+
+                    quantities:
+                        @Html.Raw(
+                                JsonSerializer.Serialize(
+                                        cantidades,
+                                        jsonOptions)),
+
+                    dates:
+                        @Html.Raw(
+                                JsonSerializer.Serialize(
+                                        fechas,
+                                        jsonOptions))
+                };
     </script>
-    <script src="~/js/novapos-dashboard.js" asp-append-version="true"></script>
+
+    <script src="~/js/novapos-dashboard.js"
+            asp-append-version="true">
+    </script>
 }

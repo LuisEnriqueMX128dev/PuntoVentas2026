@@ -10,13 +10,14 @@ namespace BibliotecaPuntoVentas.Service
 {
     public interface INovaPosService
     {
-        Task<DashboardViewModel> ObtenerDashboardAsync();
+        Task<DashboardViewModel> ObtenerDashboardAsync(DateTime? fechaInicio = null,DateTime? fechaFin = null);
 
         Task<List<CategoriaProductoViewModel>> ObtenerCategoriasAsync();
-        Task<CategoriaProductoViewModel?> ObtenerCategoriaPorIdAsync(Guid categoriaId);
+        Task<CategoriaProductoFormularioViewModel?> ObtenerCategoriaPorIdAsync(Guid categoriaId);
         Task<Guid> CrearCategoriaAsync(CategoriaProductoFormularioViewModel model);
         Task<bool> EditarCategoriaAsync(CategoriaProductoFormularioViewModel model);
         Task<bool> CambiarEstatusCategoriaAsync(Guid categoriaId);
+        Task<bool> EliminarCategoriaAsync(Guid categoriaId);
 
         Task<List<ProductoListadoViewModel>> ObtenerProductosAsync(
             string? busqueda = null,
@@ -49,9 +50,7 @@ namespace BibliotecaPuntoVentas.Service
             Guid? categoriaId = null);
 
         Task<ProductoPuntoVentaViewModel?> ObtenerProductoPorCodigoAsync(string codigo);
-        Task<ResultadoVentaViewModel> RegistrarVentaAsync(
-            RegistrarVentaViewModel model,
-            string? usuarioId = null);
+        Task<ResultadoVentaViewModel> RegistrarVentaAsync(RegistrarVentaViewModel model, string? usuarioId = null);
 
         Task<List<VentaListadoViewModel>> ObtenerVentasAsync(
             DateTime? fechaInicio = null,

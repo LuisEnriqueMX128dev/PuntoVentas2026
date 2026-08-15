@@ -39,16 +39,16 @@
         currency: 'MXN'
     }).format(Number(value) || 0);
 
+    const roundMoney = value => Math.round((Number(value) + Number.EPSILON) * 100) / 100;
+    const toCents = value => Math.round((Number(value) + Number.EPSILON) * 100);
+
     const normalizeId = value => String(value || '').toLowerCase();
 
     const calculateTotals = () => {
-        const total = [...cart.values()].reduce(
-            (sum, item) => sum + (Number(item.product.precioVenta) * item.quantity),
-            0
-        );
+        const total = roundMoney([...cart.values()].reduce((sum, item) => sum + roundMoney(Number(item.product.precioVenta) * item.quantity), 0));
         const taxRate = Number(config.porcentajeImpuesto) || 0;
-        const tax = taxRate > 0 ? total - (total / (1 + taxRate / 100)) : 0;
-        const subtotal = total - tax;
+        const tax = roundMoney(taxRate > 0 ? total - (total / (1 + taxRate / 100)) : 0);
+        const subtotal = roundMoney(total - tax);
 
         return { subtotal, tax, total };
     };
@@ -238,10 +238,10 @@
 
     const updateChange = () => {
         const total = calculateTotals().total;
-        const received = Number(receivedAmount?.value) || 0;
+        const received = roundMoney(receivedAmount?.value || 0);
         const methodName = paymentMethod?.selectedOptions[0]?.text?.trim().toLowerCase() || '';
         const isCash = methodName === 'efectivo';
-        const change = isCash ? Math.max(received - total, 0) : 0;
+        const change = isCash ? roundMoney(Math.max(received - total, 0)) : 0;
 
         changeElement.textContent = money(change);
     };
@@ -257,10 +257,12 @@
             return;
         }
 
-        const total = calculateTotals().total;
+        const total = roundMoney(calculateTotals().total);
+
         paymentTotalElement.textContent = money(total);
         receivedAmount.value = total.toFixed(2);
         paymentReference.value = '';
+
         updateChange();
 
         bootstrap.Modal.getOrCreateInstance(document.getElementById('paymentModal')).show();
@@ -274,15 +276,18 @@
         const totals = calculateTotals();
         const methodId = paymentMethod?.value;
         const methodName = paymentMethod?.selectedOptions[0]?.text?.trim().toLowerCase() || '';
-        const received = Number(receivedAmount?.value) || 0;
+        const total = roundMoney(totals.total);
+        const received = roundMoney(receivedAmount?.value || 0);
+        const totalCents = toCents(total);
+        const receivedCents = toCents(received);
 
         if (!methodId) {
             window.novaToast?.('Selecciona un método de pago.', 'Pago incompleto', true);
             return;
         }
 
-        if (methodName === 'efectivo' && received < totals.total) {
-            window.novaToast?.('El monto recibido es menor al total.', 'Monto insuficiente', true);
+        if (methodName === 'efectivo' && receivedCents < totalCents) {
+            window.novaToast?.(`El monto recibido (${money(received)}) es menor al total (${money(total)}).`, 'Monto insuficiente', true);
             receivedAmount?.focus();
             return;
         }
@@ -299,10 +304,8 @@
             })),
             pagos: [{
                 metodoPagoId: methodId,
-                monto: Number(totals.total.toFixed(2)),
-                montoRecibido: methodName === 'efectivo'
-                    ? Number(received.toFixed(2))
-                    : Number(totals.total.toFixed(2)),
+                monto: totalCents / 100,
+                montoRecibido: methodName === 'efectivo' ? receivedCents / 100 : totalCents / 100,
                 referencia: paymentReference?.value?.trim() || null
             }]
         };
@@ -324,23 +327,22 @@
             const result = await response.json().catch(() => null);
 
             if (!response.ok || !result?.exitoso) {
-                const details = result?.errores?.length
-                    ? result.errores.join(' ')
-                    : result?.mensaje;
+                const details = result?.errores?.length ? result.errores.join(' ') : result?.mensaje;
                 throw new Error(details || 'No fue posible registrar la venta.');
             }
 
             bootstrap.Modal.getInstance(document.getElementById('paymentModal'))?.hide();
+
             clearCart(false);
-            window.novaToast?.(
-                `Folio ${result.folio}. Total ${money(result.total)}. Cambio ${money(result.cambio)}.`,
-                'Venta completada'
-            );
+
+            window.novaToast?.(`Folio ${result.folio}. Total ${money(result.total)}. Cambio ${money(result.cambio)}.`, 'Venta completada');
 
             window.setTimeout(() => window.location.reload(), 1500);
-        } catch (error) {
+        }
+        catch (error) {
             window.novaToast?.(error.message, 'Error al cobrar', true);
-        } finally {
+        }
+        finally {
             confirmPaymentButton.disabled = false;
             confirmPaymentButton.textContent = 'Confirmar cobro';
         }
@@ -377,11 +379,13 @@
     cancelButton?.addEventListener('click', () => clearCart(true));
     checkoutButton?.addEventListener('click', openPayment);
     receivedAmount?.addEventListener('input', updateChange);
+
     paymentMethod?.addEventListener('change', () => {
-        const total = calculateTotals().total;
+        const total = roundMoney(calculateTotals().total);
         receivedAmount.value = total.toFixed(2);
         updateChange();
     });
+
     confirmPaymentButton?.addEventListener('click', confirmPayment);
 
     renderCart();

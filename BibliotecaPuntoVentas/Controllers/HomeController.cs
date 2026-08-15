@@ -15,9 +15,10 @@ namespace BibliotecaPuntoVentas.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(DateTime? fechaInicio,DateTime? fechaFin)
         {
-            var model = await _novaPosService.ObtenerDashboardAsync();
+
+            var model = await _novaPosService.ObtenerDashboardAsync(fechaInicio,fechaFin);
             return View(model);
         }
 

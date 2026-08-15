@@ -160,7 +160,8 @@ else
                 <strong id="subtotalValue">$0.00</strong>
             </div>
             <div class="nova-total-row">
-                <span>IVA incluido (@Model.PorcentajeImpuesto.ToString("N0")%)</span>
+               @*  <span>IVA incluido (@Model.PorcentajeImpuesto.ToString("N0")%)</span> *@
+                <span>IVU incluido (@Model.PorcentajeImpuesto.ToString("0.##")%)</span>
                 <strong id="taxValue">$0.00</strong>
             </div>
             <div class="nova-total-row grand">
