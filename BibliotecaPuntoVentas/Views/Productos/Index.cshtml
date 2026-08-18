@@ -187,23 +187,49 @@
                                         Editar
                                     </a>
 
-                                    <form asp-action="CambiarEstatus"
-                                          method="post"
-                                          class="d-inline">
+                                    @if (producto.TieneVentas)
+                                    {
+                                        @if (producto.Estatus)
+                                        {
+                                            <form asp-action="Retirar"
+                                                  method="post"
+                                                  onsubmit="return confirm('Este producto tiene ventas registradas. Se retirará del inventario y su existencia pasará a cero. ¿Deseas continuar?');">
 
-                                        @Html.AntiForgeryToken()
+                                                @Html.AntiForgeryToken()
 
-                                        <input type="hidden"
-                                               name="id"
-                                               value="@producto.Id" />
+                                                <input type="hidden" name="id" value="@producto.Id" />
 
-                                        <button type="submit"
-                                                class="btn btn-sm btn-accion-tabla @(producto.Estatus ? "btn-outline-danger" : "btn-outline-success")">
+                                                <button type="submit"
+                                                        class="btn btn-sm btn-outline-warning btn-accion-tabla">
+                                                    Retirar
+                                                </button>
+                                            </form>
+                                        }
+                                        else
+                                        {
+                                            <button type="button"
+                                                    class="btn btn-sm btn-outline-secondary btn-accion-tabla"
+                                                    disabled>
+                                                Retirado
+                                            </button>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <form asp-action="Eliminar"
+                                              method="post"
+                                              onsubmit="return confirm('Este producto nunca ha sido vendido. ¿Deseas eliminarlo completamente?');">
 
-                                            @(producto.Estatus ? "Desactivar" : "Activar")
+                                            @Html.AntiForgeryToken()
 
-                                        </button>
-                                    </form>
+                                            <input type="hidden" name="id" value="@producto.Id" />
+
+                                            <button type="submit"
+                                                    class="btn btn-sm btn-outline-danger btn-accion-tabla">
+                                                Eliminar
+                                            </button>
+                                        </form>
+                                    }
 
                                 </div>
                             </td>

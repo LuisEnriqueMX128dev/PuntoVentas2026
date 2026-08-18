@@ -77,5 +77,10 @@ namespace BibliotecaPuntoVentas.Service
 
         Task<ConfiguracionNegocioViewModel> ObtenerConfiguracionAsync();
         Task<bool> GuardarConfiguracionAsync(ConfiguracionNegocioViewModel model);
+
+        //eliminar productos o retirarlos
+
+        Task<bool> RetirarProductoAsync(Guid productoId, string? usuarioId = null);
+        Task<bool> EliminarProductoAsync(Guid productoId);
     }
 }

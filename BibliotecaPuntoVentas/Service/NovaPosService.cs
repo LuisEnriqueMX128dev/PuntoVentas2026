@@ -427,8 +427,7 @@ namespace BibliotecaPuntoVentas.Service
 
         #region Productos
 
-        public async Task<List<ProductoListadoViewModel>>
-            ObtenerProductosAsync(
+        public async Task<List<ProductoListadoViewModel>>ObtenerProductosAsync(
                 string? busqueda = null,
                 Guid? categoriaId = null,
                 bool? estatus = null)
@@ -478,7 +477,8 @@ namespace BibliotecaPuntoVentas.Service
                     Existencia = p.Existencia,
                     StockMinimo = p.StockMinimo,
                     UrlImagen = p.UrlImagen,
-                    Estatus = p.Estatus
+                    Estatus = p.Estatus,
+                    TieneVentas = _context.DetallesVenta.Any(d => d.ProductoId == p.Id)
                 })
                 .ToListAsync();
         }
@@ -808,8 +808,8 @@ namespace BibliotecaPuntoVentas.Service
             if (!string.IsNullOrWhiteSpace(busqueda))
             {
                 var texto = busqueda.Trim();
-                consulta = consulta.Where(p =>
-                    p.Nombre.Contains(texto) || p.Codigo.Contains(texto));
+
+                consulta = consulta.Where(p => p.Nombre.Contains(texto) || p.Codigo.Contains(texto));
             }
 
             var productos = await consulta
@@ -819,9 +819,7 @@ namespace BibliotecaPuntoVentas.Service
                     ProductoId = p.Id,
                     Codigo = p.Codigo,
                     Nombre = p.Nombre,
-                    Categoria = p.CategoriaProducto != null
-                        ? p.CategoriaProducto.Nombre
-                        : "Sin categoría",
+                    Categoria = p.CategoriaProducto != null ? p.CategoriaProducto.Nombre : "Sin categoría",
                     PrecioCompra = p.PrecioCompra,
                     PrecioVenta = p.PrecioVenta,
                     Existencia = p.Existencia,
@@ -830,22 +828,40 @@ namespace BibliotecaPuntoVentas.Service
                 })
                 .ToListAsync();
 
-            var todosLosProductos = await _context.Productos
+            var ultimosMovimientos = await _context.MovimientosInventario
                 .AsNoTracking()
-                .Where(p => p.Estatus)
+                .Include(m => m.Producto)
+                .Include(m => m.Usuario)
+                .Where(m => m.Producto != null && m.Producto.Estatus)
+                .OrderByDescending(m => m.FechaMovimiento)
+                .Take(10)
+                .Select(m => new MovimientoInventarioViewModel
+                {
+                    Id = m.Id,
+                    ProductoId = m.ProductoId,
+                    CodigoProducto = m.Producto != null ? m.Producto.Codigo : string.Empty,
+                    NombreProducto = m.Producto != null ? m.Producto.Nombre : string.Empty,
+                    TipoMovimiento = m.TipoMovimiento,
+                    Cantidad = m.Cantidad,
+                    ExistenciaAnterior = m.ExistenciaAnterior,
+                    ExistenciaNueva = m.ExistenciaNueva,
+                    Referencia = m.Referencia,
+                    Observaciones = m.Observaciones,
+                    NombreUsuario = m.Usuario != null ? m.Usuario.Nombre : "Sistema",
+                    FechaMovimiento = m.FechaMovimiento
+                })
                 .ToListAsync();
 
             return new InventarioIndexViewModel
             {
                 Busqueda = busqueda,
-                ValorTotalInventario = todosLosProductos.Sum(p => p.PrecioCompra * p.Existencia),
-                TotalUnidades = todosLosProductos.Sum(p => p.Existencia),
-                TotalProductos = todosLosProductos.Count,
-                ProductosStockBajo = todosLosProductos.Count(p =>
-                    p.Existencia > 0 && p.Existencia <= p.StockMinimo),
-                ProductosAgotados = todosLosProductos.Count(p => p.Existencia <= 0),
+                TotalProductos = productos.Count,
+                TotalUnidades = productos.Sum(p => p.Existencia),
+                ProductosStockBajo = productos.Count(p => p.TieneStockBajo),
+                ProductosAgotados = productos.Count(p => p.EstaAgotado),
+                ValorTotalInventario = productos.Sum(p => p.PrecioCompra * p.Existencia),
                 Productos = productos,
-                UltimosMovimientos = await ObtenerMovimientosInventarioAsync()
+                UltimosMovimientos = ultimosMovimientos
             };
         }
 
@@ -1655,6 +1671,102 @@ namespace BibliotecaPuntoVentas.Service
             }
 
             return Task.CompletedTask;
+        }
+        #endregion
+
+        #region eliminar Productos Retirarlos
+        public async Task<bool> RetirarProductoAsync(Guid productoId, string? usuarioId = null)
+        {
+            usuarioId ??= SistemaConstantes.UsuarioSistemaId;
+
+            var producto = await _context.Productos.FirstOrDefaultAsync(p => p.Id == productoId);
+
+            if (producto is null)
+            {
+                return false;
+            }
+
+            if (!producto.Estatus)
+            {
+                throw new InvalidOperationException("El producto ya se encuentra retirado.");
+            }
+
+            var ahora = DateTime.Now;
+            var existenciaAnterior = producto.Existencia;
+
+            if (existenciaAnterior > 0)
+            {
+                await _context.MovimientosInventario.AddAsync(new MovimientoInventario
+                {
+                    Id = Guid.NewGuid(),
+                    ProductoId = producto.Id,
+                    UsuarioId = usuarioId,
+                    TipoMovimiento = SistemaConstantes.MovimientoSalidaRetiro,
+                    Cantidad = existenciaAnterior,
+                    ExistenciaAnterior = existenciaAnterior,
+                    ExistenciaNueva = 0,
+                    Referencia = "RETIRO_PRODUCTO",
+                    Observaciones = "Salida de existencia por retiro del producto del catálogo.",
+                    FechaMovimiento = ahora,
+                    AltaSistema = ahora
+                });
+            }
+
+            producto.Existencia = 0;
+            producto.Estatus = false;
+            producto.ModificacionSistema = ahora;
+
+            await _context.SaveChangesAsync();
+
+            return true;
+        }
+
+
+        public async Task<bool> EliminarProductoAsync(Guid productoId)
+        {
+            var producto = await _context.Productos.FirstOrDefaultAsync(p => p.Id == productoId);
+
+            if (producto is null)
+            {
+                return false;
+            }
+
+            var tieneVentas = await _context.DetallesVenta.AnyAsync(d => d.ProductoId == productoId);
+
+            if (tieneVentas)
+            {
+                throw new InvalidOperationException("Este producto no se puede eliminar porque ya está relacionado con una venta. Puedes retirarlo del catálogo.");
+            }
+
+            await using var transaccion = await _context.Database.BeginTransactionAsync();
+
+            try
+            {
+                var movimientos = await _context.MovimientosInventario.Where(m => m.ProductoId == productoId).ToListAsync();
+                var urlImagen = producto.UrlImagen;
+
+                if (movimientos.Count > 0)
+                {
+                    _context.MovimientosInventario.RemoveRange(movimientos);
+                }
+
+                _context.Productos.Remove(producto);
+
+                await _context.SaveChangesAsync();
+                await transaccion.CommitAsync();
+
+                if (!string.IsNullOrWhiteSpace(urlImagen))
+                {
+                    await EliminarFotoProductoAsync(urlImagen);
+                }
+
+                return true;
+            }
+            catch
+            {
+                await transaccion.RollbackAsync();
+                throw;
+            }
         }
         #endregion
 

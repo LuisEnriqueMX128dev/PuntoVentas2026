@@ -22,6 +22,10 @@
 
         public bool Estatus { get; set; }
 
+        public bool TieneVentas { get; set; }
+
+        public bool PuedeEliminar => !TieneVentas;
+
         public bool TieneStockBajo =>
             Existencia > 0 && Existencia <= StockMinimo;
 

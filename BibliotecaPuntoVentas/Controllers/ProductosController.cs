@@ -235,5 +235,61 @@ namespace BibliotecaPuntoVentas.Controllers
                     .ToList();
         }
 
+        //eliminar o retirar productos
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Retirar(Guid id)
+        {
+            try
+            {
+                var resultado = await _novaPosService.RetirarProductoAsync(id);
+
+                if (!resultado)
+                {
+                    return NotFound();
+                }
+
+                TempData["MensajeExito"] = "El producto fue retirado del inventario correctamente.";
+            }
+            catch (InvalidOperationException ex)
+            {
+                TempData["MensajeError"] = ex.Message;
+            }
+            catch
+            {
+                TempData["MensajeError"] = "No fue posible retirar el producto.";
+            }
+
+            return RedirectToAction(nameof(Index));
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Eliminar(Guid id)
+        {
+            try
+            {
+                var resultado = await _novaPosService.EliminarProductoAsync(id);
+
+                if (!resultado)
+                {
+                    return NotFound();
+                }
+
+                TempData["MensajeExito"] = "El producto fue eliminado completamente.";
+            }
+            catch (InvalidOperationException ex)
+            {
+                TempData["MensajeError"] = ex.Message;
+            }
+            catch
+            {
+                TempData["MensajeError"] = "No fue posible eliminar el producto.";
+            }
+
+            return RedirectToAction(nameof(Index));
+        }
+
     }
 }
