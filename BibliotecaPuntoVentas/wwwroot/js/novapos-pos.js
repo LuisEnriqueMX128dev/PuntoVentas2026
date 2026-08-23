@@ -10,6 +10,8 @@
     );
     const cart = new Map();
 
+    const scannerQueue = [];
+    let scannerProcessing = false;
     const scannerInput = document.getElementById('codigoEscaner');
     const scannerButton = document.getElementById('buscarCodigoBtn');
     const manualSearch = document.getElementById('buscarProductoManual');
@@ -198,7 +200,45 @@
         emptyState?.classList.toggle('d-none', visible > 0);
     };
 
-    const findByCode = async () => {
+    const processScannerQueue = async () => {
+        if (scannerProcessing || scannerQueue.length === 0) {
+            return;
+        }
+
+        scannerProcessing = true;
+        scannerButton.disabled = true;
+
+        const code = scannerQueue.shift();
+
+        try {
+            const url = `${config.buscarCodigoUrl}?codigo=${encodeURIComponent(code)}`;
+            const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
+            const data = await response.json().catch(() => null);
+
+            if (!response.ok || !data?.exitoso) {
+                throw new Error(data?.mensaje || `No fue posible localizar el producto con código ${code}.`);
+            }
+
+            addProduct(data.producto);
+        }
+        catch (error) {
+            window.novaToast?.(error.message + ' Usa la búsqueda manual del catálogo.', 'Producto no encontrado', true);
+        }
+        finally {
+            scannerProcessing = false;
+            scannerButton.disabled = false;
+
+            window.setTimeout(() => {
+                scannerInput?.focus();
+            }, 30);
+
+            if (scannerQueue.length > 0) {
+                processScannerQueue();
+            }
+        }
+    };
+
+    const findByCode = () => {
         const code = (scannerInput?.value || '').trim();
 
         if (!code) {
@@ -207,33 +247,12 @@
             return;
         }
 
-        scannerButton.disabled = true;
+        scannerInput.value = '';
+        scannerInput?.focus();
 
-        try {
-            const url = `${config.buscarCodigoUrl}?codigo=${encodeURIComponent(code)}`;
-            const response = await fetch(url, {
-                headers: { 'Accept': 'application/json' }
-            });
-            const data = await response.json().catch(() => null);
+        scannerQueue.push(code);
 
-            if (!response.ok || !data?.exitoso) {
-                throw new Error(data?.mensaje || 'No fue posible localizar el producto.');
-            }
-
-            addProduct(data.producto);
-            scannerInput.value = '';
-        } catch (error) {
-            window.novaToast?.(
-                error.message + ' Usa la búsqueda manual del catálogo.',
-                'Producto no encontrado',
-                true
-            );
-            manualSearch?.focus();
-            manualSearch?.select();
-        } finally {
-            scannerButton.disabled = false;
-            window.setTimeout(() => scannerInput?.focus(), 80);
-        }
+        processScannerQueue();
     };
 
     const updateChange = () => {
