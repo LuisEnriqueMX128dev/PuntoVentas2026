@@ -26,9 +26,10 @@
 
         public DateTime FechaVenta { get; set; }
 
-        public string Estado =>
-            Cancelada
+        public string Estado => Cancelada
                 ? "Cancelada"
                 : "Pagada";
+
+        public List<VentaProductoResumenViewModel> ProductosVendidos { get; set; } = [];
     }
 }

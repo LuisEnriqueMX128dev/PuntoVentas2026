@@ -1,0 +1,242 @@
+﻿@model List<BibliotecaPuntoVentas.ViewModels.Ventas.VentaListadoViewModel>
+
+@{
+    ViewData["Title"] = "Ventas";
+    ViewData["Subtitle"] = "Consulta y administra las ventas registradas";
+
+    var fechaInicio = Context.Request.Query["fechaInicio"].ToString();
+    var fechaFin = Context.Request.Query["fechaFin"].ToString();
+}
+
+<partial name="_Alertas" />
+
+<div class="nova-card mb-4">
+    <div class="nova-card-body">
+
+        <form asp-controller="Ventas"
+              asp-action="Ventas"
+              method="get"
+              class="row g-3 align-items-end">
+
+            <div class="col-12 col-md-4 col-lg-3">
+                <label class="form-label">
+                    Fecha inicial
+                </label>
+
+                <input type="date"
+                       name="fechaInicio"
+                       value="@fechaInicio"
+                       class="form-control nova-input" />
+            </div>
+
+            <div class="col-12 col-md-4 col-lg-3">
+                <label class="form-label">
+                    Fecha final
+                </label>
+
+                <input type="date"
+                       name="fechaFin"
+                       value="@fechaFin"
+                       class="form-control nova-input" />
+            </div>
+
+            <div class="col-12 col-md-auto">
+                <button type="submit"
+                        class="btn btn-nova-primary w-100">
+                    Filtrar
+                </button>
+            </div>
+
+            <div class="col-12 col-md-auto">
+                <a asp-controller="Ventas"
+                   asp-action="Ventas"
+                   class="btn btn-nova-secondary w-100">
+                    Limpiar
+                </a>
+            </div>
+
+        </form>
+
+    </div>
+</div>
+
+<div class="nova-card">
+
+    <header class="nova-card-header">
+        <div>
+            <h2>Historial de ventas</h2>
+            <p>@Model.Count venta(s) encontrada(s)</p>
+        </div>
+    </header>
+
+    <div class="table-responsive">
+
+        <table class="table nova-table align-middle mb-0">
+
+            <thead>
+                <tr>
+                    <th>Folio</th>
+                    <th>Fecha</th>
+                    <th>Cliente</th>
+                    <th class="text-center">Productos</th>
+                    <th class="text-end">Subtotal</th>
+                    <th class="text-end">Impuesto</th>
+                    <th class="text-end">Total</th>
+                    <th>Estado</th>
+                    <th class="text-end">Acciones</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                @if (Model.Count == 0)
+                {
+                    <tr>
+                        <td colspan="9">
+                            <div class="nova-empty-state py-5">
+                                No hay ventas registradas para mostrar.
+                            </div>
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var venta in Model)
+                    {
+                        <tr>
+
+                            <td>
+                                <strong>@venta.Folio</strong>
+                            </td>
+
+                            <td>
+                                <strong>
+                                    @venta.FechaVenta.ToString("dd/MM/yyyy hh:mm tt")
+                                </strong>
+                            </td>
+
+                            <td>
+                                @(string.IsNullOrWhiteSpace(venta.Cliente)
+                                    ? "Público general"
+                                    : venta.Cliente)
+                            </td>
+
+                            <td>
+                                @if (venta.ProductosVendidos.Count > 0)
+                                {
+                                    <div class="venta-productos-lista">
+                                        @foreach (var producto in venta.ProductosVendidos)
+                                        {
+                                            <div class="venta-producto-item">
+                                                <div>
+                                                    <strong>@producto.Nombre</strong>
+
+                                                    <small>
+                                                        @producto.Codigo
+                                                    </small>
+                                                </div>
+
+                                                <span class="venta-producto-cantidad">
+                                                    × @producto.Cantidad
+                                                </span>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+                                    <span class="text-secondary">
+                                        Sin productos
+                                    </span>
+                                }
+                            </td>
+
+                            <td class="text-end">
+                                @venta.Subtotal.ToString("C2")
+                            </td>
+
+                            <td class="text-end">
+                                @venta.Impuesto.ToString("C2")
+                            </td>
+
+                            <td class="text-end">
+                                <strong>
+                                    @venta.Total.ToString("C2")
+                                </strong>
+                            </td>
+
+                            <td>
+                                @if (venta.Cancelada)
+                                {
+                                    <span class="nova-status nova-status-danger">
+                                        Cancelada
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="nova-status nova-status-success">
+                                        Completada
+                                    </span>
+                                }
+                            </td>
+
+                            <td>
+                                <div class="d-flex justify-content-end gap-2">
+
+                                    <a asp-controller="Ventas"
+                                       asp-action="Detalle"
+                                       asp-route-id="@venta.Id"
+                                       class="btn btn-sm btn-nova-secondary btn-accion-venta">
+                                        Ver
+                                    </a>
+
+                                    <form asp-controller="Ventas"
+                                          asp-action="Eliminar"
+                                          method="post"
+                                          class="d-inline"
+                                          onsubmit="return confirmarEliminacionVenta(this);">
+
+                                        @Html.AntiForgeryToken()
+
+                                        <input type="hidden"
+                                               name="id"
+                                               value="@venta.Id" />
+
+                                        <button type="submit"
+                                                class="btn btn-sm btn-outline-danger btn-accion-venta">
+                                            Eliminar
+                                        </button>
+
+                                    </form>
+
+                                </div>
+                            </td>
+
+                        </tr>
+                    }
+                }
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+@section Scripts {
+
+    <script>
+        function confirmarEliminacionVenta(form) {
+            return confirm(
+                '¿Estás seguro de eliminar esta venta?\n\n' +
+                '• La venta será eliminada definitivamente.\n' +
+                '• Los pagos serán eliminados.\n' +
+                '• Los detalles de la venta serán eliminados.\n' +
+                '• Las existencias de los productos serán restauradas.\n\n' +
+                'Esta operación no se puede deshacer.'
+            );
+        }
+    </script>
+
+}

@@ -52,9 +52,7 @@ namespace BibliotecaPuntoVentas.Service
         Task<ProductoPuntoVentaViewModel?> ObtenerProductoPorCodigoAsync(string codigo);
         Task<ResultadoVentaViewModel> RegistrarVentaAsync(RegistrarVentaViewModel model, string? usuarioId = null);
 
-        Task<List<VentaListadoViewModel>> ObtenerVentasAsync(
-            DateTime? fechaInicio = null,
-            DateTime? fechaFin = null);
+        Task<List<VentaListadoViewModel>> ObtenerVentasAsync(DateTime? fechaInicio = null,DateTime? fechaFin = null);
 
         Task<VentaDetalleViewModel?> ObtenerDetalleVentaAsync(Guid ventaId);
         Task<bool> CancelarVentaAsync(
@@ -82,5 +80,9 @@ namespace BibliotecaPuntoVentas.Service
 
         Task<bool> RetirarProductoAsync(Guid productoId, string? usuarioId = null);
         Task<bool> EliminarProductoAsync(Guid productoId);
+
+        //eliminar una venta
+
+        Task<bool> EliminarVentaAsync(Guid ventaId);
     }
 }

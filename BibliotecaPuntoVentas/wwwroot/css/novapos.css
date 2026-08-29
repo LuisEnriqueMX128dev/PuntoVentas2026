@@ -1690,3 +1690,138 @@ textarea {
     align-items: center;
     justify-content: center;
 }
+
+/*eliminar venta*/
+
+.btn-accion-venta {
+    width: 85px;
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/*Producto Venta*/
+.venta-productos-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    min-width: 180px;
+}
+
+.venta-producto-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+}
+
+    .venta-producto-item strong {
+        display: block;
+        color: #eef5ff;
+        font-size: .78rem;
+        font-weight: 700;
+    }
+
+    .venta-producto-item small {
+        display: block;
+        color: #738aa0;
+        font-size: .65rem;
+        margin-top: 2px;
+    }
+
+.venta-producto-cantidad {
+    min-width: 34px;
+    padding: 4px 7px;
+    text-align: center;
+    border-radius: 7px;
+    background: rgba(22, 140, 255, .10);
+    color: #42a5ff;
+    font-size: .72rem;
+    font-weight: 800;
+}
+
+
+/*venta detalles*/
+
+.nova-sale-folio {
+    color: #ffffff;
+    font-size: .9rem;
+    padding: 8px 12px;
+    background: rgba(22, 140, 255, .10);
+    border: 1px solid rgba(22, 140, 255, .20);
+    border-radius: 10px;
+}
+
+.nova-detail-label {
+    display: block;
+    color: #7f94aa;
+    font-size: .72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    margin-bottom: 5px;
+}
+
+.nova-detail-value {
+    display: block;
+    color: #eef5ff;
+    font-size: .95rem;
+}
+
+.nova-detail-secondary {
+    display: block;
+    color: #8497aa;
+    margin-top: 4px;
+}
+
+.nova-sale-summary {
+    display: flex;
+    flex-direction: column;
+}
+
+    .nova-sale-summary > div {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, .07);
+    }
+
+        .nova-sale-summary > div:last-child {
+            border-bottom: 0;
+        }
+
+    .nova-sale-summary span {
+        color: #91a4b8;
+        font-size: .82rem;
+    }
+
+    .nova-sale-summary strong {
+        color: #eef5ff;
+    }
+
+    .nova-sale-summary .total {
+        padding-top: 18px;
+    }
+
+        .nova-sale-summary .total span {
+            color: #ffffff;
+            font-weight: 700;
+        }
+
+        .nova-sale-summary .total strong {
+            color: #1f91ff;
+            font-size: 1.65rem;
+        }
+
+.nova-payment-method {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 10px;
+    background: rgba(22, 140, 255, .10);
+    color: #42a5ff;
+    border-radius: 999px;
+    font-size: .75rem;
+    font-weight: 700;
+}

@@ -47,10 +47,10 @@
     const normalizeId = value => String(value || '').toLowerCase();
 
     const calculateTotals = () => {
-        const total = roundMoney([...cart.values()].reduce((sum, item) => sum + roundMoney(Number(item.product.precioVenta) * item.quantity), 0));
+        const subtotal = roundMoney([...cart.values()].reduce((sum, item) => sum + roundMoney(Number(item.product.precioVenta) * item.quantity), 0));
         const taxRate = Number(config.porcentajeImpuesto) || 0;
-        const tax = roundMoney(taxRate > 0 ? total - (total / (1 + taxRate / 100)) : 0);
-        const subtotal = roundMoney(total - tax);
+        const tax = roundMoney(subtotal * (taxRate / 100));
+        const total = roundMoney(subtotal + tax);
 
         return { subtotal, tax, total };
     };

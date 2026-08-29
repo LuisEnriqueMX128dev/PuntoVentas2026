@@ -71,6 +71,30 @@ document.addEventListener("DOMContentLoaded", function () {
                 intersect: false
             },
 
+            onClick: (event, elements) => {
+                if (!elements || elements.length === 0) {
+                    return;
+                }
+
+                const index = elements[0].index;
+                const fecha = data.filterDates[index];
+
+                if (!fecha) {
+                    return;
+                }
+
+                const url = new URL(data.ventasUrl, window.location.origin);
+
+                url.searchParams.set("fechaInicio", fecha);
+                url.searchParams.set("fechaFin", fecha);
+
+                window.location.href = url.toString();
+            },
+
+            onHover: (event, elements) => {
+                event.native.target.style.cursor = elements.length > 0 ? "pointer" : "default";
+            },
+
             plugins: {
                 legend: {
                     display: false

@@ -52,89 +52,55 @@ namespace BibliotecaPuntoVentas.Service
 
         #region Dashboard
 
-        public async Task<DashboardViewModel> ObtenerDashboardAsync(DateTime? fechaInicio = null,DateTime? fechaFin = null)
+        public async Task<DashboardViewModel> ObtenerDashboardAsync(DateTime? fechaInicio = null, DateTime? fechaFin = null)
         {
             var hoy = DateTime.Today;
-
-            var inicio = fechaInicio?.Date
-                ?? hoy.AddDays(-6);
-
-            var fin = fechaFin?.Date
-                ?? hoy;
+            var inicio = fechaInicio?.Date ?? hoy.AddDays(-6);
+            var fin = fechaFin?.Date ?? hoy;
 
             if (inicio > fin)
             {
-                throw new InvalidOperationException(
-                    "La fecha inicial no puede ser mayor que la fecha final.");
+                throw new InvalidOperationException("La fecha inicial no puede ser mayor que la fecha final.");
             }
 
-            /*
-             * Sumamos un día y usamos <
-             * para incluir completamente la fecha final.
-             */
             var finExclusivo = fin.AddDays(1);
 
-            var ventasRango = _context.Ventas
-                .AsNoTracking()
-                .Where(v =>
-                    !v.Cancelada &&
-                    v.FechaVenta >= inicio &&
-                    v.FechaVenta < finExclusivo);
+            var ventasRango = _context.Ventas.AsNoTracking().Where(v => !v.Cancelada && v.FechaVenta >= inicio && v.FechaVenta < finExclusivo);
 
-            var gananciaTotalFiltro =
-            await _context.DetallesVenta
-                .AsNoTracking()
-                .Where(d =>
-                    !d.Venta!.Cancelada &&
-                    d.Venta.FechaVenta >= inicio &&
-                    d.Venta.FechaVenta < finExclusivo)
-                .SumAsync(d =>
-                    (decimal?)(
-                        d.Subtotal -
-                        (d.Producto!.PrecioCompra * d.Cantidad)
-                    ))
-            ?? 0;
+            var totalVendidoFiltro = await ventasRango.SumAsync(v => (decimal?)v.Total) ?? 0m;
+            var impuestoTotalFiltro = await ventasRango.SumAsync(v => (decimal?)v.Impuesto) ?? 0m;
+            var subtotalVendidoFiltro = await ventasRango.SumAsync(v => (decimal?)v.Subtotal) ?? 0m;
 
-            var totalVendidoFiltro =
-            await ventasRango
-                .SumAsync(v => (decimal?)v.Total)
-            ?? 0;
+            var costoProductosFiltro = await _context.DetallesVenta
+                .AsNoTracking()
+                .Where(d => !d.Venta!.Cancelada && d.Venta.FechaVenta >= inicio && d.Venta.FechaVenta < finExclusivo)
+                .SumAsync(d => (decimal?)(d.Producto!.PrecioCompra * d.Cantidad)) ?? 0m;
+
+            var gananciaTotalFiltro = decimal.Round(subtotalVendidoFiltro - costoProductosFiltro, 2, MidpointRounding.AwayFromZero);
 
             var ventasHoy = await _context.Ventas
                 .AsNoTracking()
-                .Where(v =>
-                    !v.Cancelada &&
-                    v.FechaVenta >= hoy &&
-                    v.FechaVenta < hoy.AddDays(1))
-                .SumAsync(v => (decimal?)v.Total)
-                ?? 0;
+                .Where(v => !v.Cancelada && v.FechaVenta >= hoy && v.FechaVenta < hoy.AddDays(1))
+                .SumAsync(v => (decimal?)v.Total) ?? 0m;
 
             var cantidadVentasHoy = await _context.Ventas
                 .AsNoTracking()
-                .CountAsync(v =>
-                    !v.Cancelada &&
-                    v.FechaVenta >= hoy &&
-                    v.FechaVenta < hoy.AddDays(1));
+                .CountAsync(v => !v.Cancelada && v.FechaVenta >= hoy && v.FechaVenta < hoy.AddDays(1));
 
             var ventasAyer = await _context.Ventas
                 .AsNoTracking()
-                .Where(v =>
-                    !v.Cancelada &&
-                    v.FechaVenta >= hoy.AddDays(-1) &&
-                    v.FechaVenta < hoy)
-                .SumAsync(v => (decimal?)v.Total)
-                ?? 0;
+                .Where(v => !v.Cancelada && v.FechaVenta >= hoy.AddDays(-1) && v.FechaVenta < hoy)
+                .SumAsync(v => (decimal?)v.Total) ?? 0m;
 
-            decimal porcentajeCambio = 0;
+            decimal porcentajeCambio = 0m;
 
             if (ventasAyer > 0)
             {
-                porcentajeCambio =
-                    ((ventasHoy - ventasAyer) / ventasAyer) * 100;
+                porcentajeCambio = decimal.Round(((ventasHoy - ventasAyer) / ventasAyer) * 100m, 1, MidpointRounding.AwayFromZero);
             }
             else if (ventasHoy > 0)
             {
-                porcentajeCambio = 100;
+                porcentajeCambio = 100m;
             }
 
             var ventasAgrupadas = await ventasRango
@@ -148,154 +114,87 @@ namespace BibliotecaPuntoVentas.Service
                 .OrderBy(x => x.Fecha)
                 .ToListAsync();
 
-            /*
-             * Creamos todos los días del rango.
-             * Así también aparecen días sin ventas en la gráfica.
-             */
-            var ventasUltimosDias =
-                Enumerable.Range(
-                    0,
-                    (fin - inicio).Days + 1)
+            var ventasUltimosDias = Enumerable.Range(0, (fin - inicio).Days + 1)
                 .Select(i =>
                 {
                     var fecha = inicio.AddDays(i);
-
-                    var venta =
-                        ventasAgrupadas
-                            .FirstOrDefault(v =>
-                                v.Fecha == fecha);
+                    var venta = ventasAgrupadas.FirstOrDefault(v => v.Fecha == fecha);
 
                     return new DashboardVentaDiariaViewModel
                     {
                         Fecha = fecha,
-
-                        Dia = fecha.ToString(
-                            "dd/MM"),
-
-                        Total =
-                            venta?.Total ?? 0,
-
-                        CantidadVentas =
-                            venta?.CantidadVentas ?? 0
+                        Dia = fecha.ToString("dd/MM"),
+                        Total = venta?.Total ?? 0m,
+                        CantidadVentas = venta?.CantidadVentas ?? 0
                     };
                 })
                 .ToList();
 
-            var productosMasVendidos =
-                await _context.DetallesVenta
-                    .AsNoTracking()
-                    .Where(d =>
-                        !d.Venta!.Cancelada &&
-                        d.Venta.FechaVenta >= inicio &&
-                        d.Venta.FechaVenta < finExclusivo)
-                    .GroupBy(d => new
-                    {
-                        d.ProductoId,
-                        d.Producto!.Codigo,
-                        d.Producto.Nombre,
-                        Categoria =
-                            d.Producto.CategoriaProducto!.Nombre
-                    })
-                    .Select(g =>
-                        new DashboardProductoVendidoViewModel
-                        {
-                            ProductoId =
-                                g.Key.ProductoId,
+            var productosMasVendidos = await _context.DetallesVenta
+                .AsNoTracking()
+                .Where(d => !d.Venta!.Cancelada && d.Venta.FechaVenta >= inicio && d.Venta.FechaVenta < finExclusivo)
+                .GroupBy(d => new
+                {
+                    d.ProductoId,
+                    d.Producto!.Codigo,
+                    d.Producto.Nombre,
+                    Categoria = d.Producto.CategoriaProducto!.Nombre
+                })
+                .Select(g => new DashboardProductoVendidoViewModel
+                {
+                    ProductoId = g.Key.ProductoId,
+                    Codigo = g.Key.Codigo,
+                    Nombre = g.Key.Nombre,
+                    Categoria = g.Key.Categoria,
+                    CantidadVendida = g.Sum(x => x.Cantidad),
+                    TotalVendido = g.Sum(x => x.Subtotal)
+                })
+                .OrderByDescending(x => x.CantidadVendida)
+                .Take(5)
+                .ToListAsync();
 
-                            Codigo =
-                                g.Key.Codigo,
+            var actividades = await _context.Ventas
+                .AsNoTracking()
+                .OrderByDescending(v => v.FechaVenta)
+                .Take(6)
+                .Select(v => new DashboardActividadViewModel
+                {
+                    Titulo = "Venta " + v.Folio,
+                    Descripcion = v.Cancelada ? "Venta cancelada" : "Venta completada por " + v.Total.ToString("C2"),
+                    TipoActividad = v.Cancelada ? "CANCELADA" : "VENTA",
+                    Fecha = v.FechaVenta,
+                    Referencia = v.Folio
+                })
+                .ToListAsync();
 
-                            Nombre =
-                                g.Key.Nombre,
-
-                            Categoria =
-                                g.Key.Categoria,
-
-                            CantidadVendida =
-                                g.Sum(x => x.Cantidad),
-
-                            TotalVendido =
-                                g.Sum(x => x.Subtotal)
-                        })
-                    .OrderByDescending(x =>
-                        x.CantidadVendida)
-                    .Take(5)
-                    .ToListAsync();
-
-            var actividades =
-                await _context.Ventas
-                    .AsNoTracking()
-                    .OrderByDescending(v =>
-                        v.FechaVenta)
-                    .Take(6)
-                    .Select(v =>
-                        new DashboardActividadViewModel
-                        {
-                            Titulo =
-                                "Venta " + v.Folio,
-
-                            Descripcion =
-                                v.Cancelada
-                                    ? "Venta cancelada"
-                                    : "Venta completada por " +
-                                      v.Total.ToString("C2"),
-
-                            TipoActividad =
-                                v.Cancelada
-                                    ? "CANCELADA"
-                                    : "VENTA",
-
-                            Fecha =
-                                v.FechaVenta,
-
-                            Referencia =
-                                v.Folio
-                        })
-                    .ToListAsync();
+            var totalProductos = await _context.Productos.CountAsync(p => p.Estatus);
+            var totalClientes = await _context.Clientes.CountAsync(c => c.Estatus);
+            var productosStockBajo = await _context.Productos.CountAsync(p => p.Estatus && p.Existencia > 0 && p.Existencia <= p.StockMinimo);
+            var productosAgotados = await _context.Productos.CountAsync(p => p.Estatus && p.Existencia <= 0);
 
             return new DashboardViewModel
             {
                 FechaInicio = inicio,
                 FechaFin = fin,
 
+                TotalVendidoFiltro = totalVendidoFiltro,
+                ImpuestoTotalFiltro = impuestoTotalFiltro,
+                GananciaTotalFiltro = gananciaTotalFiltro,
+
                 VentasHoy = ventasHoy,
                 VentasAyer = ventasAyer,
                 CantidadVentasHoy = cantidadVentasHoy,
 
-                TotalProductos =
-                    await _context.Productos
-                        .CountAsync(p => p.Estatus),
+                TotalProductos = totalProductos,
+                TotalClientes = totalClientes,
+                ProductosStockBajo = productosStockBajo,
+                ProductosAgotados = productosAgotados,
 
-                TotalClientes =
-                    await _context.Clientes
-                        .CountAsync(c => c.Estatus),
+                PorcentajeCambioVentas = porcentajeCambio,
 
-                ProductosStockBajo =
-                    await _context.Productos
-                        .CountAsync(p =>
-                            p.Estatus &&
-                            p.Existencia > 0 &&
-                            p.Existencia <= p.StockMinimo),
-
-                ProductosAgotados =
-                    await _context.Productos
-                        .CountAsync(p =>
-                            p.Estatus &&
-                            p.Existencia <= 0),
-
-                PorcentajeCambioVentas =
-                    porcentajeCambio,
-
-                VentasUltimosDias =
-                    ventasUltimosDias,
-
-                ProductosMasVendidos =
-                    productosMasVendidos,
-
-                ActividadesRecientes =
-                    actividades,
-                TotalVendidoFiltro = totalVendidoFiltro,
-                GananciaTotalFiltro = gananciaTotalFiltro
+                VentasUltimosDias = ventasUltimosDias,
+                ProductosMasVendidos = productosMasVendidos,
+                ActividadesRecientes = actividades
             };
         }
 
@@ -1217,9 +1116,9 @@ namespace BibliotecaPuntoVentas.Service
                 importeLineas = decimal.Round(importeLineas, 2, MidpointRounding.AwayFromZero);
 
                 var descuentoGlobal = decimal.Round(Math.Clamp(model.Descuento, 0m, importeLineas), 2, MidpointRounding.AwayFromZero);
-                var total = decimal.Round(importeLineas - descuentoGlobal, 2, MidpointRounding.AwayFromZero);
-                var impuesto = tasaImpuesto > 0 ? decimal.Round(total - (total / (1m + (tasaImpuesto / 100m))), 2, MidpointRounding.AwayFromZero) : 0m;
-                var subtotal = decimal.Round(total - impuesto, 2, MidpointRounding.AwayFromZero);
+                var subtotal = decimal.Round(importeLineas - descuentoGlobal, 2, MidpointRounding.AwayFromZero);
+                var impuesto = tasaImpuesto > 0 ? decimal.Round(subtotal * (tasaImpuesto / 100m), 2, MidpointRounding.AwayFromZero) : 0m;
+                var total = decimal.Round(subtotal + impuesto, 2, MidpointRounding.AwayFromZero);
 
                 var totalPagos = decimal.Round(model.Pagos.Sum(p => p.Monto), 2, MidpointRounding.AwayFromZero);
 
@@ -1520,13 +1419,144 @@ namespace BibliotecaPuntoVentas.Service
         public Task<bool> CambiarEstatusClienteAsync(Guid clienteId)
             => throw new NotImplementedException();
 
-        public Task<List<VentaListadoViewModel>> ObtenerVentasAsync(
-            DateTime? fechaInicio = null,
-            DateTime? fechaFin = null)
-            => throw new NotImplementedException();
+        public async Task<List<VentaListadoViewModel>> ObtenerVentasAsync(DateTime? fechaInicio = null, DateTime? fechaFin = null)
+        {
+            var consulta = _context.Ventas.AsNoTracking().AsQueryable();
 
-        public Task<VentaDetalleViewModel?> ObtenerDetalleVentaAsync(Guid ventaId)
-            => throw new NotImplementedException();
+            if (fechaInicio.HasValue)
+            {
+                var inicio = fechaInicio.Value.Date;
+                consulta = consulta.Where(v => v.FechaVenta >= inicio);
+            }
+
+            if (fechaFin.HasValue)
+            {
+                var fin = fechaFin.Value.Date.AddDays(1);
+                consulta = consulta.Where(v => v.FechaVenta < fin);
+            }
+
+            var ventas = await consulta
+                .OrderByDescending(v => v.FechaVenta)
+                .Select(v => new VentaListadoViewModel
+                {
+                    Id = v.Id,
+                    Folio = v.Folio,
+                    Cliente = v.Cliente != null ? (v.Cliente.Nombre + " " + (v.Cliente.ApellidoPaterno ?? "") + " " + (v.Cliente.ApellidoMaterno ?? "")).Trim() : "Público general",
+                    Usuario = v.Usuario != null ? (v.Usuario.Nombre + " " + (v.Usuario.ApellidoPaterno ?? "")).Trim() : "Sistema",
+                    Caja = v.Caja != null ? v.Caja.Folio : string.Empty,
+                    CantidadProductos = _context.DetallesVenta.Where(d => d.VentaId == v.Id).Sum(d => (int?)d.Cantidad) ?? 0,
+                    Subtotal = v.Subtotal,
+                    Descuento = v.Descuento,
+                    Impuesto = v.Impuesto,
+                    Total = v.Total,
+                    Cancelada = v.Cancelada,
+                    FechaVenta = v.FechaVenta
+                })
+                .ToListAsync();
+
+            if (ventas.Count == 0)
+            {
+                return ventas;
+            }
+
+            var idsVentas = ventas.Select(v => v.Id).ToList();
+
+            var productosVendidos = await _context.DetallesVenta
+                .AsNoTracking()
+                .Where(d => idsVentas.Contains(d.VentaId))
+                .Select(d => new
+                {
+                    d.VentaId,
+                    Codigo = d.Producto != null ? d.Producto.Codigo : string.Empty,
+                    Nombre = d.Producto != null ? d.Producto.Nombre : "Producto",
+                    d.Cantidad
+                })
+                .ToListAsync();
+
+            foreach (var venta in ventas)
+            {
+                venta.ProductosVendidos = productosVendidos
+                    .Where(p => p.VentaId == venta.Id)
+                    .Select(p => new VentaProductoResumenViewModel
+                    {
+                        Codigo = p.Codigo,
+                        Nombre = p.Nombre,
+                        Cantidad = p.Cantidad
+                    })
+                    .ToList();
+            }
+
+            return ventas;
+        }
+
+        public async Task<VentaDetalleViewModel?> ObtenerDetalleVentaAsync(Guid ventaId)
+        {
+            var venta = await _context.Ventas.AsNoTracking().FirstOrDefaultAsync(v => v.Id == ventaId);
+
+            if (venta is null)
+            {
+                return null;
+            }
+
+            var cliente = venta.ClienteId.HasValue ? await _context.Clientes.AsNoTracking().FirstOrDefaultAsync(c => c.Id == venta.ClienteId.Value) : null;
+            var usuario = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == venta.UsuarioId);
+            var caja = await _context.Cajas.AsNoTracking().FirstOrDefaultAsync(c => c.Id == venta.CajaId);
+
+            var productos = await _context.DetallesVenta
+                .AsNoTracking()
+                .Where(d => d.VentaId == ventaId)
+                .OrderBy(d => d.Producto!.Nombre)
+                .Select(d => new VentaDetalleProductoViewModel
+                {
+                    ProductoId = d.ProductoId,
+                    Codigo = d.Producto != null ? d.Producto.Codigo : string.Empty,
+                    Nombre = d.Producto != null ? d.Producto.Nombre : "Producto",
+                    Cantidad = d.Cantidad,
+                    PrecioUnitario = d.PrecioUnitario,
+                    Descuento = d.Descuento,
+                    Subtotal = d.Subtotal
+                })
+                .ToListAsync();
+
+            var pagos = await _context.Pagos
+                .AsNoTracking()
+                .Where(p => p.VentaId == ventaId)
+                .OrderBy(p => p.FechaPago)
+                .Select(p => new VentaDetallePagoViewModel
+                {
+                    PagoId = p.Id,
+                    MetodoPago = p.MetodoPago != null ? p.MetodoPago.Nombre : "Sin especificar",
+                    Monto = p.Monto,
+                    MontoRecibido = p.MontoRecibido,
+                    Cambio = p.Cambio,
+                    Referencia = p.Referencia,
+                    FechaPago = p.FechaPago
+                })
+                .ToListAsync();
+
+            var nombreCliente = cliente is null ? "Público general" : $"{cliente.Nombre} {cliente.ApellidoPaterno} {cliente.ApellidoMaterno}".Trim();
+            var nombreUsuario = usuario is null ? "Sistema" : $"{usuario.Nombre} {usuario.ApellidoPaterno} {usuario.ApellidoMaterno}".Trim();
+
+            return new VentaDetalleViewModel
+            {
+                Id = venta.Id,
+                Folio = venta.Folio,
+                Cliente = nombreCliente,
+                TelefonoCliente = cliente?.NumeroTelefonico,
+                CorreoCliente = cliente?.CorreoElectronico,
+                Usuario = nombreUsuario,
+                Caja = caja?.Folio ?? "Sin caja",
+                Subtotal = venta.Subtotal,
+                Descuento = venta.Descuento,
+                Impuesto = venta.Impuesto,
+                Total = venta.Total,
+                Cancelada = venta.Cancelada,
+                MotivoCancelacion = venta.MotivoCancelacion,
+                FechaVenta = venta.FechaVenta,
+                Productos = productos,
+                Pagos = pagos
+            };
+        }
 
         public Task<bool> CancelarVentaAsync(
             Guid ventaId,
@@ -1759,6 +1789,85 @@ namespace BibliotecaPuntoVentas.Service
                 {
                     await EliminarFotoProductoAsync(urlImagen);
                 }
+
+                return true;
+            }
+            catch
+            {
+                await transaccion.RollbackAsync();
+                throw;
+            }
+        }
+        #endregion
+
+        #region EliminarVentas
+
+        public async Task<bool> EliminarVentaAsync(Guid ventaId)
+        {
+            await using var transaccion = await _context.Database.BeginTransactionAsync();
+
+            try
+            {
+                var venta = await _context.Ventas.FirstOrDefaultAsync(v => v.Id == ventaId);
+
+                if (venta is null)
+                {
+                    return false;
+                }
+
+                var caja = await _context.Cajas.AsNoTracking().FirstOrDefaultAsync(c => c.Id == venta.CajaId);
+
+                if (caja is null)
+                {
+                    throw new InvalidOperationException("No se encontró la caja relacionada con la venta.");
+                }
+
+                if (!caja.Abierta)
+                {
+                    throw new InvalidOperationException("No puedes eliminar una venta perteneciente a una caja cerrada. Utiliza la opción Cancelar venta.");
+                }
+
+                var tieneCorte = await _context.CortesCaja.AnyAsync(c => c.CajaId == venta.CajaId);
+
+                if (tieneCorte)
+                {
+                    throw new InvalidOperationException("No puedes eliminar esta venta porque la caja ya tiene un corte registrado.");
+                }
+
+                var detalles = await _context.DetallesVenta.Where(d => d.VentaId == ventaId).ToListAsync();
+                var pagos = await _context.Pagos.Where(p => p.VentaId == ventaId).ToListAsync();
+                var movimientos = await _context.MovimientosInventario.Where(m => m.Referencia == venta.Folio && m.TipoMovimiento == SistemaConstantes.MovimientoSalidaVenta).ToListAsync();
+
+                foreach (var detalle in detalles)
+                {
+                    var producto = await _context.Productos.FirstOrDefaultAsync(p => p.Id == detalle.ProductoId);
+
+                    if (producto is not null)
+                    {
+                        producto.Existencia += detalle.Cantidad;
+                        producto.ModificacionSistema = DateTime.Now;
+                    }
+                }
+
+                if (movimientos.Count > 0)
+                {
+                    _context.MovimientosInventario.RemoveRange(movimientos);
+                }
+
+                if (pagos.Count > 0)
+                {
+                    _context.Pagos.RemoveRange(pagos);
+                }
+
+                if (detalles.Count > 0)
+                {
+                    _context.DetallesVenta.RemoveRange(detalles);
+                }
+
+                _context.Ventas.Remove(venta);
+
+                await _context.SaveChangesAsync();
+                await transaccion.CommitAsync();
 
                 return true;
             }

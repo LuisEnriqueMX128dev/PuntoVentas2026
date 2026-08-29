@@ -1,0 +1,368 @@
+﻿@model BibliotecaPuntoVentas.ViewModels.Ventas.VentaDetalleViewModel
+
+@{
+    ViewData["Title"] = "Detalle de venta";
+    ViewData["Subtitle"] = $"Información de la venta {Model.Folio}";
+}
+
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+
+    <div>
+        <a asp-controller="Ventas"
+           asp-action="Ventas"
+           class="btn btn-nova-secondary">
+            ← Regresar a ventas
+        </a>
+    </div>
+
+    <div>
+        @if (Model.Cancelada)
+        {
+            <span class="nova-status nova-status-danger">
+                Venta cancelada
+            </span>
+        }
+        else
+        {
+            <span class="nova-status nova-status-success">
+                Venta completada
+            </span>
+        }
+    </div>
+
+</div>
+
+<div class="row g-3 g-xl-4">
+
+    <div class="col-12 col-lg-8">
+
+        <article class="nova-card h-100">
+
+            <header class="nova-card-header">
+                <div>
+                    <h2>Información de la venta</h2>
+                    <p>Datos generales de la operación</p>
+                </div>
+
+                <strong class="nova-sale-folio">
+                    @Model.Folio
+                </strong>
+            </header>
+
+            <div class="nova-card-body">
+
+                <div class="row g-4">
+
+                    <div class="col-12 col-md-6">
+                        <span class="nova-detail-label">
+                            Fecha
+                        </span>
+
+                        <strong class="nova-detail-value">
+                            @Model.FechaVenta.ToString("dd/MM/yyyy")
+                        </strong>
+
+                        <small class="nova-detail-secondary">
+                            @Model.FechaVenta.ToString("hh:mm:ss tt")
+                        </small>
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                        <span class="nova-detail-label">
+                            Caja
+                        </span>
+
+                        <strong class="nova-detail-value">
+                            @Model.Caja
+                        </strong>
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                        <span class="nova-detail-label">
+                            Cliente
+                        </span>
+
+                        <strong class="nova-detail-value">
+                            @Model.Cliente
+                        </strong>
+
+                        @if (!string.IsNullOrWhiteSpace(Model.TelefonoCliente))
+                        {
+                            <small class="nova-detail-secondary">
+                                @Model.TelefonoCliente
+                            </small>
+                        }
+
+                        @if (!string.IsNullOrWhiteSpace(Model.CorreoCliente))
+                        {
+                            <small class="nova-detail-secondary">
+                                @Model.CorreoCliente
+                            </small>
+                        }
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                        <span class="nova-detail-label">
+                            Registrada por
+                        </span>
+
+                        <strong class="nova-detail-value">
+                            @Model.Usuario
+                        </strong>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </article>
+
+    </div>
+
+    <div class="col-12 col-lg-4">
+
+        <article class="nova-card h-100">
+
+            <header class="nova-card-header">
+                <div>
+                    <h2>Resumen</h2>
+                    <p>Importes de la venta</p>
+                </div>
+            </header>
+
+            <div class="nova-card-body">
+
+                <div class="nova-sale-summary">
+
+                    <div>
+                        <span>Subtotal</span>
+                        <strong>
+                            @Model.Subtotal.ToString("C2")
+                        </strong>
+                    </div>
+
+                    <div>
+                        <span>Descuento</span>
+                        <strong>
+                            -@Model.Descuento.ToString("C2")
+                        </strong>
+                    </div>
+
+                    <div>
+                        <span>Impuesto incluido</span>
+                        <strong>
+                            @Model.Impuesto.ToString("C2")
+                        </strong>
+                    </div>
+
+                    <div class="total">
+                        <span>Total</span>
+                        <strong>
+                            @Model.Total.ToString("C2")
+                        </strong>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </article>
+
+    </div>
+
+</div>
+
+@if (Model.Cancelada && !string.IsNullOrWhiteSpace(Model.MotivoCancelacion))
+{
+    <div class="nova-card mt-4">
+        <div class="nova-card-body">
+
+            <div class="alert alert-danger mb-0">
+                <strong>Motivo de cancelación:</strong>
+                @Model.MotivoCancelacion
+            </div>
+
+        </div>
+    </div>
+}
+
+<div class="nova-card mt-4">
+
+    <header class="nova-card-header">
+        <div>
+            <h2>Productos vendidos</h2>
+            <p>Artículos incluidos en la operación</p>
+        </div>
+
+        <span class="nova-pill info">
+            @Model.Productos.Sum(p => p.Cantidad) producto(s)
+        </span>
+    </header>
+
+    <div class="table-responsive">
+
+        <table class="table nova-table align-middle mb-0">
+
+            <thead>
+                <tr>
+                    <th>Código</th>
+                    <th>Producto</th>
+                    <th class="text-center">Cantidad</th>
+                    <th class="text-end">Precio</th>
+                    <th class="text-end">Descuento</th>
+                    <th class="text-end">Importe</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                @foreach (var producto in Model.Productos)
+                {
+                    <tr>
+
+                        <td>
+                            <span class="text-secondary">
+                                @producto.Codigo
+                            </span>
+                        </td>
+
+                        <td>
+                            <strong>
+                                @producto.Nombre
+                            </strong>
+                        </td>
+
+                        <td class="text-center">
+                            @producto.Cantidad
+                        </td>
+
+                        <td class="text-end">
+                            @producto.PrecioUnitario.ToString("C2")
+                        </td>
+
+                        <td class="text-end">
+                            @if (producto.Descuento > 0)
+                            {
+                                <span class="text-warning">
+                                    -@producto.Descuento.ToString("C2")
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="text-secondary">
+                                    $0.00
+                                </span>
+                            }
+                        </td>
+
+                        <td class="text-end">
+                            <strong>
+                                @producto.Subtotal.ToString("C2")
+                            </strong>
+                        </td>
+
+                    </tr>
+                }
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+<div class="nova-card mt-4">
+
+    <header class="nova-card-header">
+        <div>
+            <h2>Información del pago</h2>
+            <p>Métodos utilizados para completar la venta</p>
+        </div>
+    </header>
+
+    <div class="table-responsive">
+
+        <table class="table nova-table align-middle mb-0">
+
+            <thead>
+                <tr>
+                    <th>Método</th>
+                    <th>Referencia</th>
+                    <th>Fecha</th>
+                    <th class="text-end">Monto</th>
+                    <th class="text-end">Recibido</th>
+                    <th class="text-end">Cambio</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                @if (Model.Pagos.Count == 0)
+                {
+                    <tr>
+                        <td colspan="6">
+                            <div class="nova-empty-state py-4">
+                                No hay información de pago disponible.
+                            </div>
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var pago in Model.Pagos)
+                    {
+                        <tr>
+
+                            <td>
+                                <span class="nova-payment-method">
+                                    @pago.MetodoPago
+                                </span>
+                            </td>
+
+                            <td>
+                                @(string.IsNullOrWhiteSpace(pago.Referencia)
+                                    ? "—"
+                                    : pago.Referencia)
+                            </td>
+
+                            <td>
+                                @pago.FechaPago.ToString("dd/MM/yyyy hh:mm tt")
+                            </td>
+
+                            <td class="text-end">
+                                <strong>
+                                    @pago.Monto.ToString("C2")
+                                </strong>
+                            </td>
+
+                            <td class="text-end">
+                                @pago.MontoRecibido.ToString("C2")
+                            </td>
+
+                            <td class="text-end">
+                                @if (pago.Cambio > 0)
+                                {
+                                    <strong class="text-success">
+                                        @pago.Cambio.ToString("C2")
+                                    </strong>
+                                }
+                                else
+                                {
+                                    <span>
+                                        $0.00
+                                    </span>
+                                }
+                            </td>
+
+                        </tr>
+                    }
+                }
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>

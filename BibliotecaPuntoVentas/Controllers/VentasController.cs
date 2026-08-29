@@ -1,4 +1,5 @@
-﻿using BibliotecaPuntoVentas.Service;
+﻿using BibliotecaPuntoVentas.Models.Negocio;
+using BibliotecaPuntoVentas.Service;
 using BibliotecaPuntoVentas.ViewModels.Ventas;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -107,6 +108,55 @@ namespace BibliotecaPuntoVentas.Controllers
             }
 
             return RedirectToAction(nameof(Index));
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Ventas(DateTime? fechaInicio, DateTime? fechaFin)
+        {
+            var model = await _novaPosService.ObtenerVentasAsync(fechaInicio, fechaFin);
+
+            return View(model);
+        }
+
+        //eliminar venta
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Eliminar(Guid id)
+        {
+            try
+            {
+                var resultado = await _novaPosService.EliminarVentaAsync(id);
+
+                if (!resultado)
+                {
+                    return NotFound();
+                }
+
+                TempData["MensajeExito"] = "La venta se eliminó correctamente y las existencias fueron restauradas.";
+            }
+            catch (InvalidOperationException ex)
+            {
+                TempData["MensajeError"] = ex.Message;
+            }
+            catch
+            {
+                TempData["MensajeError"] = "No fue posible eliminar la venta.";
+            }
+
+            return RedirectToAction(nameof(Ventas));
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Detalle(Guid id)
+        {
+            var model = await _novaPosService.ObtenerDetalleVentaAsync(id);
+
+            if (model is null)
+            {
+                return NotFound();
+            }
+
+            return View(model);
         }
     }
 }

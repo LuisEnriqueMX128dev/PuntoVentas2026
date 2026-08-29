@@ -28,7 +28,7 @@
 
         <a asp-controller="Ventas"
            asp-action="Index"
-           class="nova-nav-item @(controllerActual == "Ventas" ? "active" : string.Empty)">
+           class="nova-nav-item @(controllerActual == "Ventas" && ViewContext.RouteData.Values["action"]?.ToString() == "Index" ? "active" : string.Empty)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="9" cy="20" r="1"></circle>
                 <circle cx="18" cy="20" r="1"></circle>
@@ -81,6 +81,23 @@
                 <path d="m3 14 9 5 9-5"></path>
             </svg>
             <span>Inventario</span>
+        </a>
+
+        <a asp-controller="Ventas"
+           asp-action="Ventas"
+           class="nova-nav-item @(controllerActual == "Ventas" && ViewContext.RouteData.Values["action"]?.ToString() == "Ventas" ? "active" : string.Empty)">
+
+            <svg viewBox="0 0 24 24"
+                 fill="none"
+                 stroke="currentColor"
+                 stroke-width="2">
+                <path d="M4 4h16v16H4z"></path>
+                <path d="M8 8h8"></path>
+                <path d="M8 12h8"></path>
+                <path d="M8 16h5"></path>
+            </svg>
+
+            <span>Ventas</span>
         </a>
 
 

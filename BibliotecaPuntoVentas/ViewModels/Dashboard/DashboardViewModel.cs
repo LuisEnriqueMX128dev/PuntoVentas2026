@@ -21,6 +21,8 @@
         public decimal GananciaTotalFiltro { get; set; }
         public decimal TotalVendidoFiltro { get; set; }
 
+        public decimal ImpuestoTotalFiltro { get; set; }
+
         public List<DashboardVentaDiariaViewModel> VentasUltimosDias { get; set; }
             = [];
 
